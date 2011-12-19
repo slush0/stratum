@@ -72,7 +72,8 @@ def get_page(url, method='GET', payload=None, headers=None):
     
 @defer.inlineCallbacks
 def ask_old_server(method, *args):
-    '''Perform request in old protocol to electrum servers'''
+    '''Perform request in old protocol to electrum servers.
+    This is deprecated, used only for proxying some calls.'''
     import urllib
     import ast
     res = (yield get_page('http://ecdsa.org/electrum.php', method='POST',

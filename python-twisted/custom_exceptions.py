@@ -4,6 +4,9 @@ class ProtocolException(Exception):
 class ServiceException(Exception):
     pass
 
+class UnauthorizedException(Exception):
+    pass
+
 class RemoteServiceException(Exception):
     pass
 
@@ -24,3 +27,4 @@ class ServiceNotFoundException(ServiceException):
 
 class MethodNotFoundException(ServiceException):
     pass
+

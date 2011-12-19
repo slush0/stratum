@@ -1,10 +1,16 @@
 DEBUG = True
 
 # Port used for Socket transport
-LISTEN_SOCKET_TRANSPORT=23232
+LISTEN_SOCKET_TRANSPORT = 23232
 
 # User agent used in HTTP requests (e.g. firstbits lookup)
-USER_AGENT='YourServer/0.1'
+USER_AGENT = 'YourServer/0.1'
+
+try:
+    ADMIN_PASSWORD = open('admin_password', 'r').read().strip()
+except:
+    print "File 'admin_password' not found, admin functionality in RPC disabled."
+    ADMIN_PASSWORD = None # Admin functionality is disabled
 
 '''
 BITCOIN_TRUSTED_HOST = '127.0.0.1'

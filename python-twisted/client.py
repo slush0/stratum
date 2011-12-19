@@ -13,15 +13,15 @@ def main():
     
     try:
         # Example of full RPC call, including proper exception handling
-        print (yield f.rpc('wallet.ping', ['nazdar',]))
+        print (yield f.rpc('firstbits.ping', ['nazdar',]))
     except custom_exceptions.RemoteServiceException as exc:
         print "RPC call failed", str(exc) 
 
     # Example of service discover, this will print all known services, their vendors
     # and available methods on remote server
     print (yield f.rpc('discovery.list_services', []))
-    print (yield f.rpc('discovery.list_vendors', ['blockchain.block',]))
-    print (yield f.rpc('discovery.list_methods', ['blockchain.block', 'Electrum',]))
+    print (yield f.rpc('discovery.list_vendors', ['firstbits',]))
+    print (yield f.rpc('discovery.list_methods', ['firstbits', 'firstbits.com',]))
 
     # Example call of firstbits service
     print (yield f.rpc('firstbits.resolve', ['1MarekM',]))

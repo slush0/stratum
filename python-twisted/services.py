@@ -91,7 +91,7 @@ def no_response(func):
         except:
             pass
     return inner
-        
+
 class ServiceMetaclass(type):
     def __init__(cls, name, bases, _dict):
         super(ServiceMetaclass, cls).__init__(name, bases, _dict)

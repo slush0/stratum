@@ -97,7 +97,6 @@ class Protocol(LineReceiver):
             response = (yield d)
             defer.returnValue(response)
             
-            
 class ClientProtocol(Protocol):
     def connectionMade(self):
         Protocol.connectionMade(self)

@@ -18,7 +18,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from socket_transport import SocketTransportFactory
 
-import settings_server as settings
+import settings
 
 def setup_services():
 
@@ -28,7 +28,7 @@ def setup_services():
     import server_repository
 	
     # Attach Socket Transport service to application
-    getwork_service = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, SocketTransportFactory())
+    getwork_service = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, SocketTransportFactory(debug=True))
     getwork_service.setServiceParent(application)
     
 def heartbeat():

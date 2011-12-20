@@ -23,6 +23,8 @@ class Protocol(LineReceiver):
         
     def writeJsonResponse(self, request_id, data):
         data = {'id': request_id, 'result': data, 'error': None}
+        if self.factory.debug:
+            print "<", data        
         self.transport.write(json.dumps(data))
 
     def writeJsonError(self, request_id, message, code=-1):
@@ -47,6 +49,9 @@ class Protocol(LineReceiver):
             except:
                 self.writeGeneralError("Cannot decode message '%s'" % line)
                 continue
+
+            if self.factory.debug:
+                print ">", message
             
             msg_id = message.get('id', 0)
             msg_method = message.get('method')

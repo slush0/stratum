@@ -33,11 +33,9 @@ class BlockchainBlockService(GenericService):
     def unsubscribe(self):
         return True
 
-    @defer.inlineCallbacks
     def get_blocknum(self):
         # FIXME: Own implementation
-        print (yield helpers.ask_old_server('b'))
-        defer.returnValue(True)
+        return helpers.ask_old_server('b')
     
 class BlockchainAddressService(GenericService):
     service_type = 'blockchain.address'

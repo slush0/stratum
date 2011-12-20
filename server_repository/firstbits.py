@@ -3,7 +3,7 @@ from twisted.internet import defer
 from services import GenericService, no_response
 from helpers import get_page
 
-import settings_server as settings
+import settings
         
 class FirstbitsService(GenericService):
     service_type = 'firstbits'

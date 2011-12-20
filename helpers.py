@@ -6,7 +6,7 @@ from twisted.web.iweb import IBodyProducer
 from twisted.web.client import Agent
 from twisted.web.http_headers import Headers
 
-import settings_server as settings
+import settings
 
 class ResponseCruncher(Protocol):
     '''Helper for get_page()'''
@@ -14,8 +14,8 @@ class ResponseCruncher(Protocol):
         self.finished = finished
         self.response = ""
         
-    def dataReceived(self, bytes):
-        self.response += bytes
+    def dataReceived(self, data):
+        self.response += data
 
     def connectionLost(self, reason):
         print self.response
@@ -68,7 +68,7 @@ def get_page(url, method='GET', payload=None, headers=None):
     except:
         raise Exception("Downloading page '%s' failed" % url)
 
-    defer.returnValue((yield finished))
+    defer.returnValue((yield finished))   
     
 @defer.inlineCallbacks
 def ask_old_server(method, *args):

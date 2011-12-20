@@ -1,7 +1,7 @@
 from twisted.internet import defer
 from twisted.internet import reactor
 
-import settings_server as settings 
+import settings 
 from services import GenericService, no_response
 import helpers
 import custom_exceptions

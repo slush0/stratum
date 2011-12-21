@@ -92,6 +92,14 @@ def no_response(func):
             pass
     return inner
 
+def synchronous(func):
+    '''Run given method synchronously in separate thread and return the result.'''
+    # Local import, because services itself aren't depending on twisted
+    from twisted.internet import threads
+    def inner(*args, **kwargs):
+        return threads.deferToThread(func, *args, **kwargs)
+    return inner
+    
 class ServiceMetaclass(type):
     def __init__(cls, name, bases, _dict):
         super(ServiceMetaclass, cls).__init__(name, bases, _dict)

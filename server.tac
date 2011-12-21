@@ -18,6 +18,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 from twisted.python.threadpool import ThreadPool
+import OpenSSL.SSL
 
 import socket_transport
 import httppoll_transport
@@ -43,10 +44,15 @@ def setup_services():
     httppoll.setServiceParent(application)
 
     # Attach HTTPS Poll Transport service to application
-    sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
-    httpspoll = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, Site(httppoll_transport.Root(debug=settings.DEBUG)),
-                                   contextFactory = sslContext)
-    httpspoll.setServiceParent(application)
+    try:
+        sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
+    except OpenSSL.SSL.Error:
+        print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
+        print "Skipping HTTPS Poll transport."
+    else:
+        httpspoll = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, Site(httppoll_transport.Root(debug=settings.DEBUG)),
+                                       contextFactory = sslContext)
+        httpspoll.setServiceParent(application)
 
     '''
     wsgiThreadPool = ThreadPool()

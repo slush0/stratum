@@ -10,7 +10,6 @@ def process_request(factory, transport, data, on_finish):
     '''Simple wrapper around Protocol object
     for emulating data received from connection.
     Used in HTTP Poll, HTTP Push.
-    
     factory '''
     p = Protocol()
     p.transport = transport
@@ -131,32 +130,31 @@ class Protocol(LineReceiver):
         Expect list of three-tuples (method, list-of-params, expect_response).
         '''
         
-        # Responses will come back in random order, so we cannot use list
-        responses_dict = {}
-        defers = []
-
+        responses = []
         for i, m in list(enumerate(methods)):
             
             method, params, expect_response = m
             request_id = self.writeJsonRequest(method, params)
         
             if not expect_response:
-                responses_dict[i] = None
+                responses.append(None)
             else:
                 def on_response(response, i):
-                    responses_dict[i] = response
-
+                    print i, response
+                    responses[i] = response
+                
                 d = defer.Deferred()
                 d.addCallback(on_response, i)               
                 self.lookup_table[request_id] = d
-                defers.append(d)
+                responses.append(d) # Add defer placeholder instead of result
          
-        # Wait for all responses
-        for d in defers:
-            yield d
+        # Wait until all placeholders will be replaced by real responses
+        for i in range(len(responses)):
+            if isinstance(responses[i], defer.Deferred):
+                yield responses[i]
             
         # Translate dictionary into list
-        responses = [ responses_dict[i] for i in range(len(responses_dict.keys())) ]
+        #responses = [ responses_dict[i] for i in range(len(responses_dict.keys())) ]
         defer.returnValue(responses)
         
     @defer.inlineCallbacks

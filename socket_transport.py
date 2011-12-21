@@ -8,7 +8,6 @@ class SocketTransportFactory(ServerFactory):
     def __init__(self, debug=False):
         self.debug = debug
         self.protocol = Protocol
-        self.client_counter = 0
         
 class SocketTransportClientFactory(ReconnectingClientFactory):
     protocol = ClientProtocol
@@ -37,6 +36,12 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
             raise Exception("Not connected")
         
         return self.client.rpc(method, params, expect_response)
+
+    def rpc_multi(self, methods):
+        if not self.client:
+            raise Exception("Not connected")
+        
+        return self.client.rpc_multi(methods)
 
     def buildProtocol(self, addr):
         self.resetDelay()

@@ -1,7 +1,20 @@
 DEBUG = True
 
+# How many threads use for synchronous methods (services)
+THREAD_POOL_SIZE = 30
+
 # Port used for Socket transport
 LISTEN_SOCKET_TRANSPORT = 23232
+
+# Port used for HTTP Poll transport
+LISTEN_HTTPPOLL_TRANSPORT = 8000
+
+# Port used for HTTPS Poll transport
+LISTEN_HTTPSPOLL_TRANSPORT = 8001
+
+# Private key and certification file for SSL layer
+SSL_PRIVKEY = 'privkey.pem'
+SSL_CACERT = 'cacert.pem'
 
 # User agent used in HTTP requests (e.g. firstbits lookup)
 USER_AGENT = 'YourServer/0.1'

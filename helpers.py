@@ -18,7 +18,6 @@ class ResponseCruncher(Protocol):
         self.response += data
 
     def connectionLost(self, reason):
-        print self.response
         self.finished.callback(self.response)
         
 class StringProducer(object):
@@ -76,6 +75,11 @@ def ask_old_server(method, *args):
     This is deprecated, used only for proxying some calls.'''
     import urllib
     import ast
+    
+    # Hack for methods without arguments
+    if not len(args):
+        args = ['',]
+        
     res = (yield get_page('http://ecdsa.org/electrum.php', method='POST',
                           headers={"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"},
                           payload=urllib.urlencode({'q': repr([method,] + list(args))})))

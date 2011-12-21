@@ -13,10 +13,14 @@ import base64
 
 from twisted.enterprise import adbapi
 from twisted.application import service, internet
-from twisted.internet import reactor, defer
+from twisted.internet import reactor, defer, ssl
 from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.web.server import Site
+from twisted.web.wsgi import WSGIResource
+from twisted.python.threadpool import ThreadPool
 
-from socket_transport import SocketTransportFactory
+import socket_transport
+import httppoll_transport
 
 import settings
 
@@ -27,10 +31,34 @@ def setup_services():
 
     import server_repository
 	
-    # Attach Socket Transport service to application
-    getwork_service = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, SocketTransportFactory(debug=True))
-    getwork_service.setServiceParent(application)
+    # Set up thread pool size for service threads
+    reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 
     
+    # Attach Socket Transport service to application
+    socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, socket_transport.SocketTransportFactory(debug=settings.DEBUG))
+    socket.setServiceParent(application)
+
+    # Attach HTTP Poll Transport service to application
+    httppoll = internet.TCPServer(settings.LISTEN_HTTPPOLL_TRANSPORT, Site(httppoll_transport.Root(debug=settings.DEBUG)))
+    httppoll.setServiceParent(application)
+
+    # Attach HTTPS Poll Transport service to application
+    sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
+    httpspoll = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, Site(httppoll_transport.Root(debug=settings.DEBUG)),
+                                   contextFactory = sslContext)
+    httpspoll.setServiceParent(application)
+
+    '''
+    wsgiThreadPool = ThreadPool()
+    wsgiThreadPool.start()
+    reactor.addSystemEventTrigger('after', 'shutdown', wsgiThreadPool.stop)
+    	
+
+    wsgi = WSGIResource(reactor, wsgiThreadPool, application)
+    wsgipoll = internet.TCPServer(settings.LISTEN_WSGIPOLL_TRANSPORT, Site(wsgi))
+    wsgipoll.setServiceParent(application)
+    '''
+	
 def heartbeat():
     print 'heartbeat'
     reactor.callLater(60, heartbeat)

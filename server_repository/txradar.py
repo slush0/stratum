@@ -10,7 +10,7 @@ class TxradarService(GenericService):
     is_default = True
 
     @defer.inlineCallbacks    
-    def search(self, tx_hash):
+    def lookup(self, tx_hash):
         try:
             result = (yield get_page('http://transactionradar.com/api/v1/tx/%s' % tx_hash))
         except Exception as exc:

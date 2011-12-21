@@ -10,16 +10,17 @@ Mapping of new Electrum protocol to old one:
     done blockchain.transaction.broadcast(tx) -> tx
     
     done node.get_peers -> peers
-    node.stop -> stop
+    done node.stop -> stop
     
-    load
-    clear_cache
-    get_cache
+    poll -> blockchain.block.subscribe, blockchain.address.subscribe
+    
+    x load
+    x clear_cache
+    x get_cache
         
-    session
-    new_session
-    update_session
-    poll
+    x session
+    x new_session
+    x update_session
 '''
 
 class BlockchainBlockService(GenericService):

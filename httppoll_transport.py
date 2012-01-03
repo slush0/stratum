@@ -1,51 +1,121 @@
-from zope.interface import Interface, Attribute, implements
 from twisted.web.resource import Resource
-from twisted.web.server import NOT_DONE_YET
-from twisted.python.components import registerAdapter
-from twisted.web.server import Session
+from twisted.web.server import Session, NOT_DONE_YET
+from twisted.internet import defer
+import hashlib
+import json
+import copy
 
+import helpers
+import semaphore
 from storage import Storage
-from protocol import process_request
+from protocol import Protocol
 import settings
 
-class IProxyStorage(Interface):
-    storage = Attribute("Storage for services")
+class Buffer(object):
+    def __init__(self, lock):
+        self.data = []
+        self.lock = lock
+        self.push_url = 'http://palatinus.cz'#None
+        
+    def write(self, data):
+        if self.lock.is_locked() or not self.push_url:
+            '''
+            Buffer response when:
+            a) Client is currently connected and server is performing the request.
+            b) Client is not connected, but push URL is unknown
+            '''
+            self.data.append(data)
+        else:
+            # Push the response to callback URL
+            # TODO: Buffer responses and perform callbacks in batches
+            
+            helpers.get_page(self.push_url, method='POST',
+                          headers={"Content-type": "application/stratum",},
+                          payload=data)#urllib.urlencode({'q': repr([method,] + list(args))})))
+                
+    def fetch(self):
+        ret = ''.join(self.data)
+        self.data = []
+        return ret
+    
+    def set_push_url(self, url):
+        self.push_url = url
 
-class ProxyStorage(object):
-    implements(IProxyStorage)
-    def __init__(self, session):
-        self.storage = Storage()
+class HttpSession(Session):
+    sessionTimeout = settings.HTTP_SESSION_TIMEOUT
+    
+    def __init__(self, *args, **kwargs):
+        Session.__init__(self, *args, **kwargs)
+        #self.storage = Storage()
+        
+        # Reference to connection object (Protocol instance)
+        self.protocol = None
+        
+        # Synchronizing object for avoiding race condition on session
+        self.lock = semaphore.Semaphore(1)
 
-registerAdapter(ProxyStorage, Session, IProxyStorage)
+        # Output buffering
+        self.buffer = Buffer(self.lock)
+                        
+        # Setup cleanup method on session expiration
+        self.notifyOnExpire(lambda: HttpSession.on_expire(self))
 
+    @classmethod
+    def on_expire(cls, sess_obj):
+        # FIXME: Close protocol connection
+        print "EXPIRING SESSION", sess_obj
+        sess_obj.protocol = None
+            
 class Root(Resource):
     isLeaf = True
     
-    def __init__(self, debug=False):
+    def __init__(self, debug=False, signing_key=None):
         Resource.__init__(self)
+        self.signing_key = signing_key
         self.debug = debug # This class acts as a 'factory', debug is used by Protocol
         
     def render_GET(self, request):
         return "Welcome to %s server. Use HTTP POST to talk with the server." % settings.USER_AGENT
-    
+        
     def render_POST(self, request):
-        self.request = request
-        self.storage = IProxyStorage(request.getSession()).storage
-               
-        request.setHeader('content-type', 'application/json')
-        request.setHeader('server', settings.USER_AGENT)
+        session = request.getSession()
 
-        #for h in request.requestHeaders.getAllRawHeaders():
-        #    print h
-            
-        data = request.content.read()   
-        process_request(self, self, data, self._finish)
-        
+        l = session.lock.acquire()
+        l.addCallback(self._perform_request, request, session)
         return NOT_DONE_YET
-
-    def write(self, data):
-        '''Act as a proxy method for Protocol.transport.write'''
-        self.request.write(data)
         
-    def _finish(self, *args):
-        self.request.finish()
+    def _perform_request(self, _, request, session):
+        request.setHeader('content-type', 'application/stratum')
+        request.setHeader('server', settings.USER_AGENT)
+               
+        if request.getHeader('content-type') != 'application/stratum':
+            buffer.write("%s\n" % json.dumps({'id': None, 'result': None, 'error': (-1, "Content-type must be 'application/stratum'. See http://stratum.bitcoin.cz for more info.")}))
+            self._finish(None, request, session.buffer, session.lock)
+            return
+        
+        if not session.protocol:            
+            # Build a "protocol connection"
+            proto = Protocol()
+            proto.connectionMade()
+            proto.transport = session.buffer
+            proto.factory = self
+            
+            session.protocol = proto
+        else:
+            proto = session.protocol
+           
+        data = request.content.read()   
+        wait = proto.dataReceived(data, return_deferred=True)
+        wait.addCallback(self._finish, request, session.buffer, session.lock)
+
+    @classmethod        
+    def _finish(cls, _, request, buffer, lock):
+        # First parameter is callback result; not used here
+        
+        data = buffer.fetch()
+        request.setHeader('content-length', len(data))
+        request.setHeader('content-md5', hashlib.md5(data).hexdigest())
+        request.setHeader('x-content-sha256', hashlib.sha256(data).hexdigest())
+        request.write(data)
+        request.finish()
+        lock.release()

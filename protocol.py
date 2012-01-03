@@ -1,26 +1,15 @@
 import json
+import time
 
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import defer
 
 import services
+import signature
 import custom_exceptions
+import connection_registry
 
-def process_request(factory, transport, data, on_finish):
-    '''Simple wrapper around Protocol object
-    for emulating data received from connection.
-    Used in HTTP Poll, HTTP Push.
-    factory '''
-    p = Protocol()
-    p.transport = transport
-    p.factory = factory
-    p.connectionMade()
-    
-    wait = p.dataReceived(data, return_deferred=True)
-    wait.addCallback(on_finish)
-    return wait
-
-class Protocol(LineReceiver):
+class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
     def _get_id(self):
         self.request_id += 1
         return self.request_id
@@ -31,45 +20,67 @@ class Protocol(LineReceiver):
         self.request_id = 0    
         self.lookup_table = {}
     
-    def writeJsonRequest(self, method, params):
-        request_id = self._get_id()
+    def writeJsonRequest(self, method, params, is_notification=False):
+        request_id = None if is_notification else self._get_id() 
         data = {'id': request_id, 'method': method, 'params': params}
         if self.factory.debug:
             print "<", data        
         self.transport.write("%s\n" % json.dumps(data))
         return request_id
         
-    def writeJsonResponse(self, request_id, data):
-        data = {'id': request_id, 'result': data, 'error': None}
+    def writeJsonResponse(self, data, message_id, use_signature=False, sign_method='', sign_params=[]):
         if self.factory.debug:
             print "<", data        
-        self.transport.write("%s\n" % json.dumps(data))
-        self.dec_request_counter()
-
-    def writeJsonError(self, request_id, message, code=-1):
-        data = {'id': request_id, 'result': None, 'error': (code, message)}
-        self.transport.write("%s\n" % json.dumps(data))
-        self.dec_request_counter()
-
-    def writeGeneralError(self, message, code=-100):
-        print message
-        return self.writeJsonError(0, message, code)
-    
-    def process_result(self, res, msg_id):
-        if res != None:
-            self.writeJsonResponse(msg_id, res)
+        
+        if use_signature:
+            serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
+                message_id, int(time.time()), sign_method, sign_params, data, None)
         else:
-            self.dec_request_counter()
+            serialized = json.dumps({'id': message_id, 'result': data, 'error': None})
+            
+        self.transport.write("%s\n" % serialized)
+        self.dec_request_counter()
 
-    def process_fail(self, exc, msg_id):
-        self.writeJsonError(msg_id, exc.getBriefTraceback())
+    def writeJsonError(self, code, message, message_id, use_signature=False, sign_method='', sign_params=[]):       
+        if use_signature:
+            serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
+                message_id, int(time.time()), sign_method, sign_params, None, (code, message))
+        else:
+            serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message)})
+            
+        self.transport.write("%s\n" % serialized)
+        self.dec_request_counter()
 
+    def writeGeneralError(self, message, code=-1):
+        print message
+        return self.writeJsonError(code, message, 0)
+    
     def dec_request_counter(self):
         self.request_counter -= 1
         if self.request_counter <= 0 and self.wait_to_finish:
             self.wait_to_finish.callback(True)
             self.wait_to_finish = None
             
+    def process_response(self, data, message_id, sign_method, sign_params):
+        if isinstance(data, services.SignatureWrapper):
+            # Sign response object with server's private key
+            self.writeJsonResponse(data.get_object(), message_id, True, sign_method, sign_params)
+        else:
+            self.writeJsonResponse(data, message_id)
+            
+    def process_failure(self, failure, message_id, sign_method, sign_params):
+        if isinstance(failure.value, services.SignatureWrapper):
+            # Strip SignatureWrapper object
+            failure.value = failure.value.get_object()
+            
+            code = -1
+            message = failure.getBriefTraceback()
+            self.writeJsonError(code, message, message_id, True, sign_method, sign_params)
+        else:
+            code = -1
+            message = failure.getBriefTraceback()
+            self.writeJsonError(code, message, message_id)
+        
     def dataReceived(self, data, return_deferred=False):
         if not self.wait_to_finish:
             self.wait_to_finish = defer.Deferred()
@@ -89,15 +100,20 @@ class Protocol(LineReceiver):
             
             msg_id = message.get('id', 0)
             msg_method = message.get('method')
+            msg_params = message.get('params')
             msg_result = message.get('result')
             msg_error = message.get('error')
-            msg_params = message.get('params')
                                             
             if msg_method:
-                # It's a RPC call or simple message
+                # It's a RPC call or notification
                 result = defer.maybeDeferred(services.ServiceFactory.call, msg_method, msg_params)
-                result.addCallback(self.process_result, msg_id)
-                result.addErrback(self.process_fail, msg_id)                
+                if msg_id == None:
+                    # It's notification, don't expect the response
+                    self.dec_request_counter()
+                else:
+                    # It's a RPC call
+                    result.addCallback(self.process_response, msg_id, msg_method, msg_params)
+                    result.addErrback(self.process_failure, msg_id, msg_method, msg_params)                
                 
             elif msg_result != None or msg_error:
                 # It's a RPC response
@@ -105,18 +121,18 @@ class Protocol(LineReceiver):
                
                 self.dec_request_counter()
                
+                print self.lookup_table
                 try:
-                    d = self.lookup_table[msg_id]
+                    meta = self.lookup_table[msg_id]
                     del self.lookup_table[msg_id]
                 except KeyError:
-                    
                     # When deferred object for given message ID isn't found, it's an error
                     raise custom_exceptions.ProtocolException("Lookup for deferred object for message ID '%s' failed." % msg_id)
 
                 if msg_result != None:
-                    d.callback(msg_result)
+                    meta['defer'].callback(msg_result)
                 else:
-                    d.errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
+                    meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
                 
             else:
                 raise custom_exceptions.ProtocolException("Cannot handle message '%s'" % line)
@@ -133,19 +149,19 @@ class Protocol(LineReceiver):
         responses = []
         for i, m in list(enumerate(methods)):
             
-            method, params, expect_response = m
-            request_id = self.writeJsonRequest(method, params)
+            method, params, is_notification = m
+            request_id = self.writeJsonRequest(method, params, is_notification)
         
-            if not expect_response:
+            if is_notification:
                 responses.append(None)
             else:
                 def on_response(response, i):
-                    print i, response
+                    print response, i
                     responses[i] = response
                 
                 d = defer.Deferred()
                 d.addCallback(on_response, i)               
-                self.lookup_table[request_id] = d
+                self.lookup_table[request_id] = {'defer': d, 'method': method, 'params': params}
                 responses.append(d) # Add defer placeholder instead of result
          
         # Wait until all placeholders will be replaced by real responses
@@ -158,7 +174,7 @@ class Protocol(LineReceiver):
         defer.returnValue(responses)
         
     @defer.inlineCallbacks
-    def rpc(self, method, params, expect_response=True):
+    def rpc(self, method, params, is_notification=False):
         '''
             This method performs remote RPC call.
 
@@ -166,12 +182,12 @@ class Protocol(LineReceiver):
             request ID to lookup table and wait for corresponding
             response message.
         ''' 
-        
-        request_id = self.writeJsonRequest(method, params)
-        
-        if expect_response:
+
+        request_id = self.writeJsonRequest(method, params, is_notification)
+
+        if not is_notification:
             d = defer.Deferred()
-            self.lookup_table[request_id] = d
+            self.lookup_table[request_id] = {'defer': d, 'method': method, 'params': params}
             response = (yield d)
             defer.returnValue(response)
             

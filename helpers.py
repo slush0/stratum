@@ -60,7 +60,7 @@ def get_page(url, method='GET', payload=None, headers=None):
 
     #for h in response.headers.getAllRawHeaders():
     #    print h
-    
+
     try:        
         finished = defer.Deferred()
         (yield response).deliverBody(ResponseCruncher(finished))

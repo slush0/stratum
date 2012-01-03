@@ -36,11 +36,15 @@ def setup_services():
     reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 
     
     # Attach Socket Transport service to application
-    socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, socket_transport.SocketTransportFactory(debug=settings.DEBUG))
+    socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, socket_transport.SocketTransportFactory(debug=settings.DEBUG, signing_key=settings.SIGNING_KEY))
     socket.setServiceParent(application)
 
+    # Build the HTTP interface
+    httpsite = Site(httppoll_transport.Root(debug=settings.DEBUG, signing_key=settings.SIGNING_KEY))
+    httpsite.sessionFactory = httppoll_transport.HttpSession
+    
     # Attach HTTP Poll Transport service to application
-    httppoll = internet.TCPServer(settings.LISTEN_HTTPPOLL_TRANSPORT, Site(httppoll_transport.Root(debug=settings.DEBUG)))
+    httppoll = internet.TCPServer(settings.LISTEN_HTTPPOLL_TRANSPORT, httpsite)
     httppoll.setServiceParent(application)
 
     # Attach HTTPS Poll Transport service to application
@@ -50,8 +54,7 @@ def setup_services():
         print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
         print "Skipping HTTPS Poll transport."
     else:
-        httpspoll = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, Site(httppoll_transport.Root(debug=settings.DEBUG)),
-                                       contextFactory = sslContext)
+        httpspoll = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, httpsite, contextFactory = sslContext)
         httpspoll.setServiceParent(application)
 
     '''

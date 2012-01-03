@@ -1,6 +1,6 @@
 from twisted.internet import defer
 
-from services import GenericService, no_response
+from services import GenericService, signature
 from helpers import get_page
 
 import settings
@@ -28,7 +28,7 @@ class FirstbitsService(GenericService):
             defer.returnValue(firstbits)
         else:
             raise Exception("Firstbits lookup failed")
-        
+    
     @defer.inlineCallbacks
     def resolve(self, firstbits):
         if len(firstbits) > 24 or firstbits[0] != '1':

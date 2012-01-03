@@ -2,7 +2,7 @@ from twisted.internet import defer
 from twisted.internet import reactor
 
 import settings 
-from services import GenericService, no_response, synchronous
+from services import GenericService, signature, synchronous
 import helpers
 import custom_exceptions
 
@@ -27,6 +27,7 @@ class NodeService(GenericService):
     service_vendor = 'Electrum'
     is_default = True
         
+    @signature
     @defer.inlineCallbacks
     def get_peers(self):
         # FIXME: Own implementation

@@ -15,4 +15,14 @@ class TxradarService(GenericService):
             result = (yield get_page('http://transactionradar.com/api/v1/tx/%s' % tx_hash))
         except Exception as exc:
             raise Exception("Failed to retrieve transaction status: %s" % str(exc))
-        defer.returnValue(json.loads(result))
+        
+        data = {}
+        try:            
+            src = json.loads(result)
+            data['percentage'] = src['seen_by']
+            data['last_activity'] = int(src['last_activity'])
+            data['first_seen'] = int(src['first_seen'])
+        except Exception as exc:
+            raise Exception("Received data are corrupted: %s" % str(exc))
+        
+        defer.returnValue(data)

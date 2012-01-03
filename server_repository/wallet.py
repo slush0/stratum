@@ -1,4 +1,4 @@
-from services import GenericService, no_response
+from services import GenericService
 
 class WalletService(GenericService):
     service_type = 'wallet'

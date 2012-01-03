@@ -1,7 +1,14 @@
 from twisted.internet import defer
+import StringIO
+import binascii
 
-from services import GenericService, no_response
+from services import GenericService
 import helpers
+import settings
+
+import halfnode
+import p2pnode
+p2pnode.run(settings.BITCOIN_TRUSTED_HOST)
 
 '''
 Mapping of new Electrum protocol to old one:
@@ -57,8 +64,8 @@ class BlockchainAddressService(GenericService):
         # FIXME: Own implementation
         return helpers.ask_old_server('b', address)
     
-class BlockchainTransactionsService(GenericService):
-    service_type = 'blockchain.transactions'
+class BlockchainTransactionService(GenericService):
+    service_type = 'blockchain.transaction'
     service_vendor = 'Electrum'
     is_default = True
     
@@ -72,17 +79,11 @@ class BlockchainTransactionsService(GenericService):
         # FIXME: Blockchain analysis
         return 0.0005
     
-class BlockchainTransactionService(GenericService):
-    service_type = 'blockchain.transaction'
-    service_vendor = 'Electrum'
-    is_default = True
-    
-    @defer.inlineCallbacks
     def broadcast(self, transaction):
-        # FIXME: Own implementation
-        if not (yield helpers.ask_old_server('tx', transaction)):
-            defer.returnValue(False)
-        defer.returnValue(True)
-    
+        tx = halfnode.msg_tx()
+        tx.deserialize(StringIO.StringIO(binascii.unhexlify(transaction)))
+        p2pnode.get_connection().send_message(tx)
+        return True
+
     def get(self, hash):
         raise NotImplemented

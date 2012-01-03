@@ -7,6 +7,18 @@ class ServiceException(Exception):
 class UnauthorizedException(Exception):
     pass
 
+class SignatureException(Exception):
+    pass
+
+class SigningNotAvailableException(SignatureException):
+    pass
+
+class UnknownSignatureAlgorithmException(SignatureException):
+    pass
+
+class SignatureVerificationFailedException(SignatureException):
+    pass
+
 class RemoteServiceException(Exception):
     pass
 
@@ -27,4 +39,3 @@ class ServiceNotFoundException(ServiceException):
 
 class MethodNotFoundException(ServiceException):
     pass
-

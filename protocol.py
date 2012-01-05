@@ -1,4 +1,5 @@
 import json
+import jsonical
 import time
 
 from twisted.protocols.basic import LineReceiver
@@ -8,8 +9,11 @@ import services
 import signature
 import custom_exceptions
 import connection_registry
+import logger
 
-class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
+log = logger.get_logger('protocol')
+
+class Protocol(LineReceiver):
     def _get_id(self):
         self.request_id += 1
         return self.request_id
@@ -20,24 +24,32 @@ class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
         self.request_id = 0    
         self.lookup_table = {}
     
+        log.debug("Connected %s" % self.transport.getPeer().host)
+        connection_registry.ConnectionRegistry.add_connection(self)
+    
+    def connectionLost(self, reason):
+        connection_registry.ConnectionRegistry.remove_connection(self)
+
     def writeJsonRequest(self, method, params, is_notification=False):
         request_id = None if is_notification else self._get_id() 
-        data = {'id': request_id, 'method': method, 'params': params}
+        serialized = jsonical.dumps({'id': request_id, 'method': method, 'params': params})
+
         if self.factory.debug:
-            print "<", data        
-        self.transport.write("%s\n" % json.dumps(data))
+            log.debug("< %s" % serialized)
+                    
+        self.transport.write("%s\n" % serialized)
         return request_id
         
-    def writeJsonResponse(self, data, message_id, use_signature=False, sign_method='', sign_params=[]):
-        if self.factory.debug:
-            print "<", data        
-        
+    def writeJsonResponse(self, data, message_id, use_signature=False, sign_method='', sign_params=[]):        
         if use_signature:
             serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
                 message_id, int(time.time()), sign_method, sign_params, data, None)
         else:
-            serialized = json.dumps({'id': message_id, 'result': data, 'error': None})
+            serialized = jsonical.dumps({'id': message_id, 'result': data, 'error': None})
             
+        if self.factory.debug:
+            log.debug("< %s" % serialized)        
+
         self.transport.write("%s\n" % serialized)
         self.dec_request_counter()
 
@@ -46,14 +58,14 @@ class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
             serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
                 message_id, int(time.time()), sign_method, sign_params, None, (code, message))
         else:
-            serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message)})
+            serialized = jsonical.dumps({'id': message_id, 'result': None, 'error': (code, message)})
             
         self.transport.write("%s\n" % serialized)
         self.dec_request_counter()
 
     def writeGeneralError(self, message, code=-1):
-        print message
-        return self.writeJsonError(code, message, 0)
+        log.error(message)
+        return self.writeJsonError(code, message, None)
     
     def dec_request_counter(self):
         self.request_counter -= 1
@@ -92,11 +104,11 @@ class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
             try:
                 message = json.loads(line)
             except:
-                self.writeGeneralError("Cannot decode message '%s'" % line)
-                continue
+                #self.writeGeneralError("Cannot decode message '%s'" % line)
+                raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line)
             
             if self.factory.debug:
-                print ">", message
+                log.debug("> %s" % message)
             
             msg_id = message.get('id', 0)
             msg_method = message.get('method')
@@ -115,13 +127,12 @@ class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
                     result.addCallback(self.process_response, msg_id, msg_method, msg_params)
                     result.addErrback(self.process_failure, msg_id, msg_method, msg_params)                
                 
-            elif msg_result != None or msg_error:
+            elif (msg_result != None or msg_error) and msg_id:
                 # It's a RPC response
                 # Perform lookup to the table of waiting requests.
                
                 self.dec_request_counter()
                
-                print self.lookup_table
                 try:
                     meta = self.lookup_table[msg_id]
                     del self.lookup_table[msg_id]
@@ -156,7 +167,6 @@ class Protocol(LineReceiver, connection_registry.ConnectionRegistryMixin):
                 responses.append(None)
             else:
                 def on_response(response, i):
-                    print response, i
                     responses[i] = response
                 
                 d = defer.Deferred()

@@ -18,6 +18,8 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 from twisted.python.threadpool import ThreadPool
+from twisted.python import log
+from twisted.python.logfile import DailyLogFile
 import OpenSSL.SSL
 
 import socket_transport
@@ -29,18 +31,27 @@ def setup_services():
 
     #dbpool = adbapi.ConnectionPool(settings.DATABASE_DRIVER, host=settings.DATABASE_HOST, user=settings.DATABASE_USER,
     #                               passwd=settings.DATABASE_PASSWORD, db=settings.DATABASE_DBNAME, cp_reconnect=True)
-
+        
+    try:
+        import signature
+        signing_key = signature.load_privkey_pem(settings.SIGNING_KEY)
+    except:
+        print "Loading of signing key '%s' failed, protocol messages cannot be signed." % settings.SIGNING_KEY
+        signing_key = None
+        
+    # Load all services in /service_repository/ directory.
     import server_repository
 	
     # Set up thread pool size for service threads
     reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 
     
     # Attach Socket Transport service to application
-    socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT, socket_transport.SocketTransportFactory(debug=settings.DEBUG, signing_key=settings.SIGNING_KEY))
+    socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT,
+                                socket_transport.SocketTransportFactory(debug=settings.DEBUG, signing_key=signing_key))
     socket.setServiceParent(application)
 
     # Build the HTTP interface
-    httpsite = Site(httppoll_transport.Root(debug=settings.DEBUG, signing_key=settings.SIGNING_KEY))
+    httpsite = Site(httppoll_transport.Root(debug=settings.DEBUG, signing_key=signing_key))
     httpsite.sessionFactory = httppoll_transport.HttpSession
     
     # Attach HTTP Poll Transport service to application
@@ -56,7 +67,7 @@ def setup_services():
     else:
         httpspoll = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, httpsite, contextFactory = sslContext)
         httpspoll.setServiceParent(application)
-
+        
     '''
     wsgiThreadPool = ThreadPool()
     wsgiThreadPool.start()
@@ -69,7 +80,7 @@ def setup_services():
     '''
 	
 def heartbeat():
-    print 'heartbeat'
+    log.msg('heartbeat')
     reactor.callLater(60, heartbeat)
 
 if settings.DEBUG:

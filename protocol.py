@@ -76,6 +76,7 @@ class Protocol(LineReceiver):
     def process_response(self, data, message_id, sign_method, sign_params):
         if isinstance(data, services.SignatureWrapper):
             # Sign response object with server's private key
+            # TODO: Proxy signature details if presented in SignatureWrapper
             self.writeJsonResponse(data.get_object(), message_id, True, sign_method, sign_params)
         else:
             self.writeJsonResponse(data, message_id)

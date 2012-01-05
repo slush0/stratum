@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # Public Domain
-# Original author: tcatm
+# Original author: ArtForz
 # Twisted integration: slush
 
 import struct

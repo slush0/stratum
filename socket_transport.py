@@ -5,17 +5,19 @@ from twisted.internet import reactor
 from protocol import Protocol, ClientProtocol
 
 class SocketTransportFactory(ServerFactory):
-    def __init__(self, debug=False, signing_key=None):
+    def __init__(self, debug=False, signing_key=None, signing_id=None):
         self.debug = debug
         self.signing_key = signing_key
+        self.signing_id = signing_id
         self.protocol = Protocol
         
 class SocketTransportClientFactory(ReconnectingClientFactory):
     protocol = ClientProtocol
 
-    def __init__(self, host, port, debug=False, signing_key=None, on_connect=None):
+    def __init__(self, host, port, debug=False, signing_key=None, signing_id=None, on_connect=None):
         self.debug = debug
         self.signing_key = signing_key
+        self.signing_id = signing_id
         self.client = None # Reference to open connection
         self.on_connect = on_connect
         #reactor.callLater(10, self.connection_timeout)

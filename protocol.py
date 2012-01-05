@@ -56,7 +56,7 @@ class Protocol(LineOnlyReceiver):
         
     def writeJsonResponse(self, data, message_id, use_signature=False, sign_method='', sign_params=[]):        
         if use_signature:
-            serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
+            serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, self.factory.signing_id, False,\
                 message_id, sign_method, sign_params, data, None)
         else:
             serialized = jsonical.dumps({'id': message_id, 'result': data, 'error': None})
@@ -68,7 +68,7 @@ class Protocol(LineOnlyReceiver):
 
     def writeJsonError(self, code, message, message_id, use_signature=False, sign_method='', sign_params=[]):       
         if use_signature:
-            serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
+            serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, self.factoruy.signing_id, False,\
                 message_id, int(time.time()), sign_method, sign_params, None, (code, message))
         else:
             serialized = jsonical.dumps({'id': message_id, 'result': None, 'error': (code, message)})

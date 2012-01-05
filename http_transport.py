@@ -124,9 +124,10 @@ class HttpSession(Session):
 class Root(Resource):
     isLeaf = True
     
-    def __init__(self, debug=False, signing_key=None):
+    def __init__(self, debug=False, signing_key=None, signing_id=None):
         Resource.__init__(self)
         self.signing_key = signing_key
+        self.signing_id = signing_id
         self.debug = debug # This class acts as a 'factory', debug is used by Protocol
         
     def render_GET(self, request):

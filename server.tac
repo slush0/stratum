@@ -50,11 +50,13 @@ def setup_services():
     
     # Attach Socket Transport service to application
     socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT,
-                                socket_transport.SocketTransportFactory(debug=settings.DEBUG, signing_key=signing_key))
+                                socket_transport.SocketTransportFactory(debug=settings.DEBUG,
+                                                                        signing_key=signing_key,
+                                                                        signing_id=settings.SIGNING_ID))
     socket.setServiceParent(application)
 
     # Build the HTTP interface
-    httpsite = Site(http_transport.Root(debug=settings.DEBUG, signing_key=signing_key))
+    httpsite = Site(http_transport.Root(debug=settings.DEBUG, signing_key=signing_key, signing_id=settings.SIGNING_ID))
     httpsite.sessionFactory = http_transport.HttpSession
     
     # Attach HTTP Poll Transport service to application

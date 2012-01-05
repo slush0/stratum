@@ -1,3 +1,7 @@
+from twisted.internet import defer
+from twisted.python import log
+#import types
+
 import custom_exceptions
 
 class ServiceFactory(object):
@@ -81,15 +85,51 @@ class ServiceFactory(object):
         ServiceFactory.registry.setdefault(service_type, {})
         ServiceFactory.registry[service_type][service_vendor] = _cls
 
-        print "Registered %s for service '%s', vendor '%s' (default: %s)" % (_cls, service_type, service_vendor, is_default)
+        log.msg("Registered %s for service '%s', vendor '%s' (default: %s)" % (_cls, service_type, service_vendor, is_default))
 
-def no_response(func):
-    '''Supress any result from inner method (even exceptions!)'''
-    def inner(*args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except:
-            pass
+class SignatureWrapper(object):
+    '''This wrapper around any object indicate that caller want to sign given object'''
+    def __init__(self, obj):
+        self.obj = obj
+        
+    def get_object(self):
+        return self.obj
+    
+def signature(func):
+    '''Decorate RPC method result with server's signature.
+    This decorator can be chained with Deferred or inlineCallbacks, thanks to _sign_generator() hack.'''
+
+    def _sign_generator(iterator):
+        '''Iterate thru generator object, detects BaseException
+        and inject SignatureWrapper into exception's value (=result of inner method).
+        This is black magic because of decorating inlineCallbacks methods.
+        See returnValue documentation for understanding this:
+        http://twistedmatrix.com/documents/11.0.0/api/twisted.internet.defer.html#returnValue'''
+    
+        for i in iterator:
+            try:
+                iterator.send((yield i))
+            except BaseException as exc:
+                exc.value = SignatureWrapper(exc.value)
+                raise
+
+    def _sign_deferred(res):
+        return SignatureWrapper(res)
+    
+    def _sign_failure(fail):
+        fail.value = SignatureWrapper(fail.value)
+        return fail
+    
+    def inner(*args, **kwargs):        
+        ret = func(*args, **kwargs)
+        if isinstance(ret, defer.Deferred):
+            ret.addCallback(_sign_deferred)
+            ret.addErrback(_sign_failure)
+            return ret
+        #elif isinstance(ret, types.GeneratorType):
+        #    return _sign_generator(ret)
+        else:
+            return SignatureWrapper(ret)
     return inner
 
 def synchronous(func):

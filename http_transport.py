@@ -8,7 +8,7 @@ import json
 import helpers
 import semaphore
 #from storage import Storage
-from protocol import Protocol
+from protocol import Protocol, RequestCounter
 import settings
 
 import logger
@@ -129,9 +129,11 @@ class Root(Resource):
         if callback_url:
             session.transport.push_url = callback_url 
                   
-        data = request.content.read()   
-        wait = proto.dataReceived(data, return_deferred=True)
+        data = request.content.read()
+        wait = defer.Deferred()
         wait.addCallback(self._finish, request, session.transport, session.lock)
+        proto.dataReceived(data, request_counter=RequestCounter(wait))
+        
 
     @classmethod        
     def _finish(cls, _, request, transport, lock):

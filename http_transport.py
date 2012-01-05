@@ -1,9 +1,10 @@
 from twisted.web.resource import Resource
-from twisted.web.server import Session, NOT_DONE_YET
+from twisted.web.server import Request, Session, NOT_DONE_YET
 from twisted.internet import defer
 from twisted.python.failure import Failure
 import hashlib
 import json
+import string
 
 import helpers
 import semaphore
@@ -19,7 +20,7 @@ class Transport(object):
         self.buffer = []
         self.session_id = session_id
         self.lock = lock
-        self.push_url = None
+        self.push_url = None # None or full URL for HTTP Push
         self.peer = None
         
         # For compatibility with generic transport, not used in HTTP transport
@@ -33,7 +34,7 @@ class Transport(object):
             
         if not self.lock.is_locked() and self.push_url:
             # Push the buffer to callback URL
-            # TODO: Buffer responses and perform callbacks in batches
+            # TODO: Buffer responses and perform callbgitacks in batches
             self.push_buffer()
             
     def push_buffer(self):
@@ -41,13 +42,11 @@ class Transport(object):
         if not self.push_url:
             return
         
-        buffer = self.fetch_buffer()
-        
         # FIXME: Don't expect any response
         helpers.get_page(self.push_url, method='POST',
                          headers={"content-type": "application/stratum",
                                   "x-session-id": self.session_id},
-                         payload=buffer)
+                         payload=self.fetch_buffer())
         
     def fetch_buffer(self):
         ret = ''.join(self.buffer)
@@ -56,6 +55,42 @@ class Transport(object):
     
     def set_push_url(self, url):
         self.push_url = url
+
+def monkeypatch_method(cls):
+    '''Perform monkey patch for given class.'''
+    def decorator(func):
+        setattr(cls, func.__name__, func)
+        return func
+    return decorator
+
+@monkeypatch_method(Request)
+def getSession(self, sessionInterface=None, cookie_prefix='TWISTEDSESSION'):
+    '''Monkey patch for Request object, providing backward-compatible
+    getSession method which can handle custom cookie as a session ID
+    (which is necessary for following Stratum protocol specs).
+    Unfortunately twisted developers rejected named-cookie feature,
+    which is pressing me into this ugly solution...
+    
+    TODO: Especially this would deserve some unit test to be sure it doesn't break
+    in future twisted versions.
+    '''
+    # Session management
+    if not self.session:
+        cookiename = string.join([cookie_prefix] + self.sitepath, "_")
+        sessionCookie = self.getCookie(cookiename)
+        if sessionCookie:
+            try:
+                self.session = self.site.getSession(sessionCookie)
+            except KeyError:
+                pass
+        # if it still hasn't been set, fix it up.
+        if not self.session:
+            self.session = self.site.makeSession()
+            self.addCookie(cookiename, self.session.uid, path='/')
+    self.session.touch()
+    if sessionInterface:
+        return self.session.getComponent(sessionInterface)
+    return self.session
 
 class HttpSession(Session):
     sessionTimeout = settings.HTTP_SESSION_TIMEOUT
@@ -98,7 +133,7 @@ class Root(Resource):
         return "Welcome to %s server. Use HTTP POST to talk with the server." % settings.USER_AGENT
         
     def render_POST(self, request):
-        session = request.getSession()
+        session = request.getSession(cookie_prefix='STRATUM_SESSION')
         
         l = session.lock.acquire()
         l.addCallback(self._perform_request, request, session)
@@ -129,8 +164,12 @@ class Root(Resource):
  
         # Update callback URL if presented
         callback_url = request.getHeader('x-callback-url')
-        if callback_url:
-            session.transport.push_url = callback_url 
+        if callback_url != None:
+            if callback_url == '':
+                # Blank value of callback URL switches HTTP Push back to HTTP Poll
+                session.transport.push_url = None
+            else:
+                session.transport.push_url = callback_url 
                   
         data = request.content.read()
         wait = defer.Deferred()

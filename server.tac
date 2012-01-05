@@ -25,7 +25,10 @@ import OpenSSL.SSL
 import socket_transport
 import http_transport
 
-import settings
+try:
+    import settings
+except ImportError:
+    print "settings.py missing? Maybe you want to copy and customize settings.sample.py?"
 
 def setup_services():
 

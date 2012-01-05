@@ -57,7 +57,7 @@ class Protocol(LineOnlyReceiver):
     def writeJsonResponse(self, data, message_id, use_signature=False, sign_method='', sign_params=[]):        
         if use_signature:
             serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, False,\
-                message_id, int(time.time()), sign_method, sign_params, data, None)
+                message_id, sign_method, sign_params, data, None)
         else:
             serialized = jsonical.dumps({'id': message_id, 'result': data, 'error': None})
             
@@ -107,7 +107,11 @@ class Protocol(LineOnlyReceiver):
     def dataReceived(self, data, request_counter=RequestCounter()):
         '''Original code from Twisted, hacked for request_counter proxying.
         request_counter is hack for HTTP transport, didn't found cleaner solution how
-        to indicate end of request processing in asynchronous manner.'''
+        to indicate end of request processing in asynchronous manner.
+        
+        TODO: This would deserve some unit test to be sure that future twisted versions
+        will work nicely with this.'''
+        
         lines  = (self._buffer+data).split(self.delimiter)
         self._buffer = lines.pop(-1)
         request_counter.set_count(len(lines))

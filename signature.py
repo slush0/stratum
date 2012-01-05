@@ -60,11 +60,11 @@ def verify(pubkey, signature, data):
     except:
         return False
 
-def jsonrpc_dumps_sign(privkey, privkey_id, is_request, message_id, timestamp, method='', params=[], result=None, error=None):
+def jsonrpc_dumps_sign(privkey, privkey_id, is_request, message_id, method='', params=[], result=None, error=None):
     '''Create the signature for given json-rpc data and returns signed json-rpc text stream'''
     
     # Build data object to sign
-    data = {'method': method, 'params': params, 'result': result, 'error': error, 'timestamp': timestamp}
+    data = {'method': method, 'params': params, 'result': result, 'error': error}
        
     # Serialize data to sign and perform signing
     txt = jsonical.dumps(data)
@@ -99,14 +99,13 @@ def jsonrpc_loads_verify(pubkeys, txt):
     
     signature = data['sign']
     message_id = data['id']
-    timestamp = data['timestamp']
     method = data.get('method', '')
     params = data.get('params', [])
     result = data.get('result', None)
     error = data.get('error', None)
     
     # Build data object to verify
-    data = {'method': method, 'params': params, 'result': result, 'error': error, 'timestamp': timestamp}        
+    data = {'method': method, 'params': params, 'result': result, 'error': error}        
     txt = jsonical.dumps(data)
     
     if not verify(pubkey, signature, txt):

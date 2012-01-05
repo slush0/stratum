@@ -1,6 +1,7 @@
 from twisted.web.resource import Resource
 from twisted.web.server import Session, NOT_DONE_YET
 from twisted.internet import defer
+from twisted.python.failure import Failure
 import hashlib
 import json
 import copy
@@ -11,12 +12,16 @@ from storage import Storage
 from protocol import Protocol
 import settings
 
-class Buffer(object):
+class Transport(object):
     def __init__(self, lock):
-        self.data = []
+        self.buffer = []
         self.lock = lock
-        self.push_url = 'http://palatinus.cz'#None
+        self.push_url = None
+        self.peer = None
         
+    def getPeer(self):
+        return self.peer
+    
     def write(self, data):
         if self.lock.is_locked() or not self.push_url:
             '''
@@ -24,18 +29,18 @@ class Buffer(object):
             a) Client is currently connected and server is performing the request.
             b) Client is not connected, but push URL is unknown
             '''
-            self.data.append(data)
+            self.buffer.append(data)
         else:
             # Push the response to callback URL
             # TODO: Buffer responses and perform callbacks in batches
             
             helpers.get_page(self.push_url, method='POST',
                           headers={"Content-type": "application/stratum",},
-                          payload=data)#urllib.urlencode({'q': repr([method,] + list(args))})))
+                          payload=buffer)#urllib.urlencode({'q': repr([method,] + list(args))})))
                 
-    def fetch(self):
-        ret = ''.join(self.data)
-        self.data = []
+    def fetch_buffer(self):
+        ret = ''.join(self.buffer)
+        self.buffer = []
         return ret
     
     def set_push_url(self, url):
@@ -55,7 +60,7 @@ class HttpSession(Session):
         self.lock = semaphore.Semaphore(1)
 
         # Output buffering
-        self.buffer = Buffer(self.lock)
+        self.transport = Transport(self.lock)
                         
         # Setup cleanup method on session expiration
         self.notifyOnExpire(lambda: HttpSession.on_expire(self))
@@ -64,6 +69,10 @@ class HttpSession(Session):
     def on_expire(cls, sess_obj):
         # FIXME: Close protocol connection
         print "EXPIRING SESSION", sess_obj
+        
+        if sess_obj.protocol:
+            sess_obj.protocol.connectionLost(Failure(Exception("HTTP session closed")))
+            
         sess_obj.protocol = None
             
 class Root(Resource):
@@ -79,7 +88,7 @@ class Root(Resource):
         
     def render_POST(self, request):
         session = request.getSession()
-
+        
         l = session.lock.acquire()
         l.addCallback(self._perform_request, request, session)
         return NOT_DONE_YET
@@ -87,32 +96,34 @@ class Root(Resource):
     def _perform_request(self, _, request, session):
         request.setHeader('content-type', 'application/stratum')
         request.setHeader('server', settings.USER_AGENT)
-               
+          
+        # Update client's IP address     
+        session.transport.peer = request.getHost()
+
         if request.getHeader('content-type') != 'application/stratum':
-            buffer.write("%s\n" % json.dumps({'id': None, 'result': None, 'error': (-1, "Content-type must be 'application/stratum'. See http://stratum.bitcoin.cz for more info.")}))
-            self._finish(None, request, session.buffer, session.lock)
+            session.transport.write("%s\n" % json.dumps({'id': None, 'result': None, 'error': (-1, "Content-type must be 'application/stratum'. See http://stratum.bitcoin.cz for more info.")}))
+            self._finish(None, request, session.transport, session.lock)
             return
         
         if not session.protocol:            
             # Build a "protocol connection"
             proto = Protocol()
-            proto.connectionMade()
-            proto.transport = session.buffer
+            proto.transport = session.transport
             proto.factory = self
-            
+            proto.connectionMade()
             session.protocol = proto
         else:
             proto = session.protocol
            
         data = request.content.read()   
         wait = proto.dataReceived(data, return_deferred=True)
-        wait.addCallback(self._finish, request, session.buffer, session.lock)
+        wait.addCallback(self._finish, request, session.transport, session.lock)
 
     @classmethod        
-    def _finish(cls, _, request, buffer, lock):
+    def _finish(cls, _, request, transport, lock):
         # First parameter is callback result; not used here
         
-        data = buffer.fetch()
+        data = transport.fetch_buffer()
         request.setHeader('content-length', len(data))
         request.setHeader('content-md5', hashlib.md5(data).hexdigest())
         request.setHeader('x-content-sha256', hashlib.sha256(data).hexdigest())

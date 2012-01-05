@@ -13,14 +13,26 @@ import logger
 
 log = logger.get_logger('protocol')
 
+class RequestCounter(object):
+    def __init__(self, deferred=None):
+        self.deferred = deferred
+        self.counter = 0
+        
+    def set_count(self, cnt):
+        self.counter = cnt
+        
+    def decrease(self):
+        self.counter -= 1
+        if self.counter <= 0 and self.deferred:
+            self.deferred.callback(True)
+            self.deferred = None
+
 class Protocol(LineReceiver):
     def _get_id(self):
         self.request_id += 1
         return self.request_id
 
     def connectionMade(self):
-        self.wait_to_finish = None
-        self.request_counter = 0
         self.request_id = 0    
         self.lookup_table = {}
     
@@ -51,7 +63,6 @@ class Protocol(LineReceiver):
             log.debug("< %s" % serialized)        
 
         self.transport.write("%s\n" % serialized)
-        self.dec_request_counter()
 
     def writeJsonError(self, code, message, message_id, use_signature=False, sign_method='', sign_params=[]):       
         if use_signature:
@@ -61,19 +72,12 @@ class Protocol(LineReceiver):
             serialized = jsonical.dumps({'id': message_id, 'result': None, 'error': (code, message)})
             
         self.transport.write("%s\n" % serialized)
-        self.dec_request_counter()
 
     def writeGeneralError(self, message, code=-1):
         log.error(message)
         return self.writeJsonError(code, message, None)
-    
-    def dec_request_counter(self):
-        self.request_counter -= 1
-        if self.request_counter <= 0 and self.wait_to_finish:
-            self.wait_to_finish.callback(True)
-            self.wait_to_finish = None
             
-    def process_response(self, data, message_id, sign_method, sign_params):
+    def process_response(self, data, message_id, sign_method, sign_params, request_counter):
         if isinstance(data, services.SignatureWrapper):
             # Sign response object with server's private key
             # TODO: Proxy signature details if presented in SignatureWrapper
@@ -81,7 +85,9 @@ class Protocol(LineReceiver):
         else:
             self.writeJsonResponse(data, message_id)
             
-    def process_failure(self, failure, message_id, sign_method, sign_params):
+        request_counter.decrease()
+            
+    def process_failure(self, failure, message_id, sign_method, sign_params, request_counter):
         if isinstance(failure.value, services.SignatureWrapper):
             # Strip SignatureWrapper object
             failure.value = failure.value.get_object()
@@ -93,13 +99,12 @@ class Protocol(LineReceiver):
             code = -1
             message = failure.getBriefTraceback()
             self.writeJsonError(code, message, message_id)
+            
+        request_counter.decrease()
         
-    def dataReceived(self, data, return_deferred=False):
-        if not self.wait_to_finish:
-            self.wait_to_finish = defer.Deferred()
-        
+    def dataReceived(self, data, request_counter=RequestCounter()):
         lines = data.splitlines(False)
-        self.request_counter += len(lines)
+        request_counter.set_count(len(lines))
         
         for line in lines:
             try:
@@ -122,17 +127,17 @@ class Protocol(LineReceiver):
                 result = defer.maybeDeferred(services.ServiceFactory.call, msg_method, msg_params)
                 if msg_id == None:
                     # It's notification, don't expect the response
-                    self.dec_request_counter()
+                    request_counter.decrease()
                 else:
                     # It's a RPC call
-                    result.addCallback(self.process_response, msg_id, msg_method, msg_params)
-                    result.addErrback(self.process_failure, msg_id, msg_method, msg_params)                
+                    result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
+                    result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
                 
             elif (msg_result != None or msg_error) and msg_id:
                 # It's a RPC response
                 # Perform lookup to the table of waiting requests.
                
-                self.dec_request_counter()
+                request_counter.decrease()
                
                 try:
                     meta = self.lookup_table[msg_id]
@@ -148,9 +153,6 @@ class Protocol(LineReceiver):
                 
             else:
                 raise custom_exceptions.ProtocolException("Cannot handle message '%s'" % line)
-    
-        if return_deferred:
-            return self.wait_to_finish
           
     @defer.inlineCallbacks
     def rpc_multi(self, methods):

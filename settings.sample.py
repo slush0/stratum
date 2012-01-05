@@ -28,10 +28,10 @@ THREAD_POOL_SIZE = 30
 LISTEN_SOCKET_TRANSPORT = 3333
 
 # Port used for HTTP Poll transport. Use 'None' for disabling the transport
-LISTEN_HTTPPOLL_TRANSPORT = 80
+LISTEN_HTTP_TRANSPORT = 80
 
 # Port used for HTTPS Poll transport
-LISTEN_HTTPSPOLL_TRANSPORT = 443
+LISTEN_HTTPS_TRANSPORT = 443
 
 # ******************** SSL SETTINGS ******************
 

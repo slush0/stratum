@@ -48,30 +48,33 @@ def setup_services():
     # Set up thread pool size for service threads
     reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 
     
-    # Attach Socket Transport service to application
-    socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT,
+    if settings.LISTEN_SOCKET_TRANSPORT:
+        # Attach Socket Transport service to application
+        socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT,
                                 socket_transport.SocketTransportFactory(debug=settings.DEBUG,
                                                                         signing_key=signing_key,
                                                                         signing_id=settings.SIGNING_ID))
-    socket.setServiceParent(application)
+        socket.setServiceParent(application)
 
     # Build the HTTP interface
     httpsite = Site(http_transport.Root(debug=settings.DEBUG, signing_key=signing_key, signing_id=settings.SIGNING_ID))
     httpsite.sessionFactory = http_transport.HttpSession
-    
-    # Attach HTTP Poll Transport service to application
-    http = internet.TCPServer(settings.LISTEN_HTTPPOLL_TRANSPORT, httpsite)
-    http.setServiceParent(application)
 
-    # Attach HTTPS Poll Transport service to application
-    try:
-        sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
-    except OpenSSL.SSL.Error:
-        print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
-        print "Skipping HTTPS Poll transport."
-    else:
-        https = internet.SSLServer(settings.LISTEN_HTTPSPOLL_TRANSPORT, httpsite, contextFactory = sslContext)
-        https.setServiceParent(application)
+    if settings.LISTEN_HTTP_TRANSPORT:    
+        # Attach HTTP Poll Transport service to application
+        http = internet.TCPServer(settings.LISTEN_HTTP_TRANSPORT, httpsite)
+        http.setServiceParent(application)
+
+    if settings.LISTEN_HTTPS_TRANSPORT:
+        # Attach HTTPS Poll Transport service to application
+        try:
+            sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
+        except OpenSSL.SSL.Error:
+            print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
+            print "Skipping HTTPS Poll transport."
+        else:
+            https = internet.SSLServer(settings.LISTEN_HTTPS_TRANSPORT, httpsite, contextFactory = sslContext)
+            https.setServiceParent(application)
         
     '''
     wsgiThreadPool = ThreadPool()
@@ -91,5 +94,5 @@ def heartbeat():
 if settings.DEBUG:
     reactor.callLater(0, heartbeat)
 
-application = service.Application("electrum-server")
+application = service.Application("stratum-server")
 setup_services()

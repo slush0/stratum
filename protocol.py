@@ -2,7 +2,7 @@ import json
 import jsonical
 import time
 
-from twisted.protocols.basic import LineReceiver
+from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import defer
 
 import services
@@ -27,7 +27,9 @@ class RequestCounter(object):
             self.deferred.callback(True)
             self.deferred = None
 
-class Protocol(LineReceiver):
+class Protocol(LineOnlyReceiver):
+    delimiter = '\n'
+    
     def _get_id(self):
         self.request_id += 1
         return self.request_id
@@ -103,56 +105,70 @@ class Protocol(LineReceiver):
         request_counter.decrease()
         
     def dataReceived(self, data, request_counter=RequestCounter()):
-        lines = data.splitlines(False)
+        '''Original code from Twisted, hacked for request_counter proxying.
+        request_counter is hack for HTTP transport, didn't found cleaner solution how
+        to indicate end of request processing in asynchronous manner.'''
+        lines  = (self._buffer+data).split(self.delimiter)
+        self._buffer = lines.pop(-1)
         request_counter.set_count(len(lines))
         
         for line in lines:
-            try:
-                message = json.loads(line)
-            except:
-                #self.writeGeneralError("Cannot decode message '%s'" % line)
-                raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line)
-            
-            if self.factory.debug:
-                log.debug("> %s" % message)
-            
-            msg_id = message.get('id', 0)
-            msg_method = message.get('method')
-            msg_params = message.get('params')
-            msg_result = message.get('result')
-            msg_error = message.get('error')
-                                            
-            if msg_method:
-                # It's a RPC call or notification
-                result = defer.maybeDeferred(services.ServiceFactory.call, msg_method, msg_params)
-                if msg_id == None:
-                    # It's notification, don't expect the response
-                    request_counter.decrease()
-                else:
-                    # It's a RPC call
-                    result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
-                    result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
-                
-            elif (msg_result != None or msg_error) and msg_id:
-                # It's a RPC response
-                # Perform lookup to the table of waiting requests.
-               
-                request_counter.decrease()
-               
-                try:
-                    meta = self.lookup_table[msg_id]
-                    del self.lookup_table[msg_id]
-                except KeyError:
-                    # When deferred object for given message ID isn't found, it's an error
-                    raise custom_exceptions.ProtocolException("Lookup for deferred object for message ID '%s' failed." % msg_id)
-
-                if msg_result != None:
-                    meta['defer'].callback(msg_result)
-                else:
-                    meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
-                
+            if self.transport.disconnecting:
+                return
+            if len(line) > self.MAX_LENGTH:
+                return self.lineLengthExceeded(line)
             else:
-                raise custom_exceptions.ProtocolException("Cannot handle message '%s'" % line)
+                self.lineReceived(line, request_counter)
+        if len(self._buffer) > self.MAX_LENGTH:
+            return self.lineLengthExceeded(self._buffer)        
+        
+    def lineReceived(self, line, request_counter):
+        try:
+            message = json.loads(line)
+        except:
+            #self.writeGeneralError("Cannot decode message '%s'" % line)
+            raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line)
+        
+        if self.factory.debug:
+            log.debug("> %s" % message)
+        
+        msg_id = message.get('id', 0)
+        msg_method = message.get('method')
+        msg_params = message.get('params')
+        msg_result = message.get('result')
+        msg_error = message.get('error')
+                                        
+        if msg_method:
+            # It's a RPC call or notification
+            result = defer.maybeDeferred(services.ServiceFactory.call, msg_method, msg_params)
+            if msg_id == None:
+                # It's notification, don't expect the response
+                request_counter.decrease()
+            else:
+                # It's a RPC call
+                result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
+                result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
+            
+        elif (msg_result != None or msg_error) and msg_id:
+            # It's a RPC response
+            # Perform lookup to the table of waiting requests.
+           
+            request_counter.decrease()
+           
+            try:
+                meta = self.lookup_table[msg_id]
+                del self.lookup_table[msg_id]
+            except KeyError:
+                # When deferred object for given message ID isn't found, it's an error
+                raise custom_exceptions.ProtocolException("Lookup for deferred object for message ID '%s' failed." % msg_id)
+
+            if msg_result != None:
+                meta['defer'].callback(msg_result)
+            else:
+                meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
+            
+        else:
+            raise custom_exceptions.ProtocolException("Cannot handle message '%s'" % line)
           
     @defer.inlineCallbacks
     def rpc_multi(self, methods):

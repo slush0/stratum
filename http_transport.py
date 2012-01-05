@@ -22,6 +22,9 @@ class Transport(object):
         self.push_url = None
         self.peer = None
         
+        # For compatibility with generic transport, not used in HTTP transport
+        self.disconnecting = False
+        
     def getPeer(self):
         return self.peer
     

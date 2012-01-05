@@ -13,6 +13,9 @@ class SignatureException(Exception):
 class SigningNotAvailableException(SignatureException):
     pass
 
+class UnknownSignatureIdException(SignatureException):
+    pass
+
 class UnknownSignatureAlgorithmException(SignatureException):
     pass
 

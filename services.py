@@ -1,21 +1,38 @@
 from twisted.internet import defer
 from twisted.python import log
 #import types
+import re
 
 import custom_exceptions
 
+VENDOR_RE = re.compile(r'\[(.*)\]')
+
 class ServiceFactory(object):
     registry = {} # Mapping service_type -> vendor -> cls
-
-    @classmethod
-    def _split_method(cls, method):
-        '''Returns tuple with (service_type, rpc_method)'''
-        x = method.rsplit('.', 1)
-        return (x[0], x[1])
     
     @classmethod
-    def call(cls, method, params, vendor=None):
-        (service_type, func) = cls._split_method(method)
+    def _split_method(cls, method):
+        '''Parses "some.service[vendor].method" string
+        and returns 3-tuple with (service_type, vendor, rpc_method)'''
+        
+        # Splits the service type and method name
+        (service_type, method_name) = method.rsplit('.', 1)
+        vendor = None
+        
+        if '[' in service_type:
+            # Use regular expression only when brackets found
+            try:
+                vendor = VENDOR_RE.search(service_type).group(1)
+                service_type = service_type.replace('[%s]' % vendor, '')
+            except:
+                raise
+                #raise custom_exceptions.ServiceNotFoundException("Invalid syntax in service name '%s'" % type_name[0])
+            
+        return (service_type, vendor, method_name)
+    
+    @classmethod
+    def call(cls, method, params):
+        (service_type, vendor, func) = cls._split_method(method)
         
         try:
             func = cls.lookup(service_type, vendor=vendor)().__getattribute__(func)

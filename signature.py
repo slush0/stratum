@@ -8,7 +8,7 @@ except ImportError:
     
 import base64
 import hashlib
-import copy
+import time
 
 import jsonical
 import json
@@ -64,7 +64,8 @@ def jsonrpc_dumps_sign(privkey, privkey_id, is_request, message_id, method='', p
     '''Create the signature for given json-rpc data and returns signed json-rpc text stream'''
     
     # Build data object to sign
-    data = {'method': method, 'params': params, 'result': result, 'error': error}
+    sign_time = int(time.time())
+    data = {'method': method, 'params': params, 'result': result, 'error': error, 'sign_time': sign_time}
        
     # Serialize data to sign and perform signing
     txt = jsonical.dumps(data)
@@ -72,9 +73,11 @@ def jsonrpc_dumps_sign(privkey, privkey_id, is_request, message_id, method='', p
     
     # Reconstruct final data object and put signature
     if is_request:
-        data = {'id': message_id, 'method': method, 'params': params, 'sign': signature, 'sign_algo': 'ecdsa;SECP256k1', 'sign_id': privkey_id}
+        data = {'id': message_id, 'method': method, 'params': params,
+                'sign': signature, 'sign_algo': 'ecdsa;SECP256k1', 'sign_id': privkey_id, 'sign_time': sign_time}
     else:
-        data = {'id': message_id, 'result': result, 'error': error, 'sign': signature, 'sign_algo': 'ecdsa;SECP256k1', 'sign_id': privkey_id}
+        data = {'id': message_id, 'result': result, 'error': error,
+                'sign': signature, 'sign_algo': 'ecdsa;SECP256k1', 'sign_id': privkey_id, 'sign_time': sign_time}
         
     # Return original data extended with signature
     return jsonical.dumps(data)
@@ -88,6 +91,7 @@ def jsonrpc_loads_verify(pubkeys, txt):
     data = json.loads(txt)
     signature_algo = data['sign_algo']
     signature_id = data['sign_id']
+    signature_time = data['sign_time']
     
     if signature_algo != 'ecdsa;SECP256k1':
         raise custom_exceptions.UnknownSignatureAlgorithmException("%s is not supported" % signature_algo)
@@ -95,7 +99,7 @@ def jsonrpc_loads_verify(pubkeys, txt):
     try:
         pubkey = pubkeys[signature_id]
     except KeyError:
-        raise custom_exceptions.UnknownSignatureId("Public key for '%s' not found" % signature_id)
+        raise custom_exceptions.UnknownSignatureIdException("Public key for '%s' not found" % signature_id)
     
     signature = data['sign']
     message_id = data['id']
@@ -105,7 +109,7 @@ def jsonrpc_loads_verify(pubkeys, txt):
     error = data.get('error', None)
     
     # Build data object to verify
-    data = {'method': method, 'params': params, 'result': result, 'error': error}        
+    data = {'method': method, 'params': params, 'result': result, 'error': error, 'sign_time': signature_time}        
     txt = jsonical.dumps(data)
     
     if not verify(pubkey, signature, txt):

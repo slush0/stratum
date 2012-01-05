@@ -9,12 +9,15 @@ data += '{"id": 4, "method": "txradar.lookup", "params": ["202e0d0ef7b1299a2193a
 try:
     headers = {'cookie': open('cookie.txt', 'r').read().strip(),}
 except:
-    headers = None
+    headers = {}
+    
+headers['content-type'] = 'application/stratum'
 
 r = urllib2.Request('http://localhost:8000', data, headers)
 resp = urllib2.urlopen(r)
 
 for h in resp.headers:
+    print h, resp.headers[h]
     if h == 'set-cookie':
         open('cookie.txt', 'w').write(resp.headers[h])
         

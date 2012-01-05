@@ -89,11 +89,20 @@ class ServiceFactory(object):
 
 class SignatureWrapper(object):
     '''This wrapper around any object indicate that caller want to sign given object'''
-    def __init__(self, obj):
+    def __init__(self, obj, sign=None, sign_algo=None, sign_id=None):
         self.obj = obj
+        self.sign = sign
+        self.sign_algo = sign_algo
+        self.sign_id = sign_id
         
     def get_object(self):
         return self.obj
+    
+    def get_sign(self):
+        if self.sign:
+            return (self.sign, self.sign_algo, self.sign_id)
+        
+        raise custom_exceptions.SignatureException("Signature not found")
     
 def signature(func):
     '''Decorate RPC method result with server's signature.

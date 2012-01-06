@@ -78,7 +78,7 @@ def setup_services():
             https.setServiceParent(application)
         
     if settings.IRC_NICK:
-        reactor.connectTCP("irc.freenode.net", 6667, irc.IrcLurkerFactory('#stratum-nodes', settings.IRC_NICK, settings.IRC_HOSTNAME))
+        reactor.connectTCP("irc.freenode.net", 6667, irc.IrcLurkerFactory(settings.IRC_ROOM, settings.IRC_NICK, settings.IRC_HOSTNAME))
     
     '''
     wsgiThreadPool = ThreadPool()

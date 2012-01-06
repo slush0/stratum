@@ -177,7 +177,7 @@ class Protocol(LineOnlyReceiver):
     @defer.inlineCallbacks
     def rpc_multi(self, methods):
         '''
-        Expect list of three-tuples (method, list-of-params, expect_response).
+        Expect list of three-tuples (method, list-of-params, is_notification).
         '''
         
         responses = []

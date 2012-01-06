@@ -36,8 +36,9 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
             which = self.peers_trusted if peer['trusted'] else self.peers_untrusted
             which[hash] = peer
                  
-        print self.peers_trusted
-        print self.peers_untrusted
+        #print self.peers_trusted
+        #print self.peers_untrusted
+        
     '''
     def connection_timeout(self):
         if self.client:

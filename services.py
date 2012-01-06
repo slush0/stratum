@@ -33,7 +33,7 @@ class ServiceFactory(object):
     @classmethod
     def call(cls, method, params):
         (service_type, vendor, func) = cls._split_method(method)
-        
+                    
         try:
             func = cls.lookup(service_type, vendor=vendor)().__getattribute__(func)
             if not callable(func):
@@ -182,7 +182,7 @@ class GenericService(object):
     
 class ServiceDiscovery(GenericService):
     service_type = 'discovery'
-    service_vendor = 'Electrum'
+    service_vendor = 'Stratum'
     is_default = True
     
     def list_services(self):
@@ -191,7 +191,12 @@ class ServiceDiscovery(GenericService):
     def list_vendors(self, service_type):
         return ServiceFactory.registry[service_type].keys()
     
-    def list_methods(self, service_type, vendor):
+    def list_methods(self, service_name):
+        # Accepts also vendors in square brackets: firstbits[firstbits.com]
+        
+        # Parse service type and vendor. We don't care about the method name,
+        # but _split_method needs full path to some RPC method.
+        (service_type, vendor, _) = ServiceFactory._split_method("%s.foo" % service_name)
         service = ServiceFactory.lookup(service_type, vendor)
         out = []
         
@@ -206,3 +211,20 @@ class ServiceDiscovery(GenericService):
             out.append(name)
         
         return out
+    
+    def list_params(self, *args):
+        out = []
+        for arg in args:
+            (service_type, vendor, method) = ServiceFactory._split_method(arg)
+            service = ServiceFactory.lookup(service_type, vendor)
+            
+            # Load params and helper text from method attributes
+            func = service.__dict__[method]
+            params = getattr(func, 'params', None)
+            help_text = getattr(func, 'help_text', None)
+            
+            out.append((arg, help_text, params,))
+        return out
+    list_params.help_text = "Accepts name of methods and returns their description and available parameters. Example: 'firstbits.resolve', 'firstbits.create'"
+    list_params.params = [('method1', 'string', 'Method to lookup for description and parameters.'),
+                          ('methodN' ,'string', 'Another method to lookup')]

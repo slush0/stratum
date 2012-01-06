@@ -28,6 +28,8 @@ class FirstbitsService(GenericService):
             defer.returnValue(firstbits)
         else:
             raise Exception("Firstbits lookup failed")
+    create.params = [('address', 'string', "String containing full Bitcoin address. Example: '1MarekMKDKRb6PEeHeVuiCGayk9avyBGBB'. Don't hesitate to send small donation here :).")]
+    create.help_text = 'Create firstbits shortcut from full Bitcoin address.'
     
     @defer.inlineCallbacks
     def resolve(self, firstbits):
@@ -41,4 +43,5 @@ class FirstbitsService(GenericService):
             defer.returnValue(address)
         else:
             raise Exception("Firstbits lookup failed")
-            
+    resolve.params = [('firstbits', 'string', "String containing shortened Bitcoin address. Example: '1marekMKDK'")]
+    resolve.help_text = 'Resolve full Bitcoin address from given firstbits.'

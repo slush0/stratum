@@ -49,13 +49,13 @@ class NodeService(GenericService):
                     log.error("Failed to resolve hostname '%s'" % peer['hostname'])
                     continue
                 
-                peers.append({
-                    'hostname': peer['hostname'],
-                    'trusted': peer.get('trusted', False),
-                    'weight': peer.get('weight', 0),
-                    'ipv4': peer.get('ipv4'),
-                    'ipv6': peer.get('ipv6'),
-                })
+            peers.append({
+                'hostname': peer['hostname'],
+                'trusted': peer.get('trusted', False),
+                'weight': peer.get('weight', 0),
+                'ipv4': peer.get('ipv4'),
+                'ipv6': peer.get('ipv6'),
+            })
         
         if settings.IRC_NICK:
             try:

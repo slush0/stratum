@@ -1,11 +1,16 @@
 from twisted.internet import defer
 from twisted.internet import reactor
+from twisted.names import client
+
 import hashlib
 
 import settings 
 from services import GenericService, signature, synchronous
-import helpers
 import custom_exceptions
+import irc
+
+import logger
+log = logger.get_logger('service.node')
 
 def admin(func):
     def inner(*args, **kwargs):
@@ -31,16 +36,50 @@ class NodeService(GenericService):
     @signature
     @defer.inlineCallbacks
     def get_peers(self):
-        # FIXME: Own implementation
+        # FIXME: Cache result/DNS lookup
         peers = []
-        for peer in (yield helpers.ask_old_server('peers')):
-            peers.append({
-                'trusted': True,
-                'weight': 1,
-                'ipv4': peer[0],
-                'ipv6': None,
-                'hostname': peer[1],      
-            })
+        
+        # Include hardcoded peers
+        for peer in settings.PEERS:
+
+            if not peer.get('ipv4'):
+                try:
+                    peer['ipv4'] = (yield client.getHostByName(peer['hostname']))
+                except Exception:
+                    log.error("Failed to resolve hostname '%s'" % peer['hostname'])
+                    continue
+                
+                peers.append({
+                    'hostname': peer['hostname'],
+                    'trusted': peer.get('trusted', False),
+                    'weight': peer.get('weight', 0),
+                    'ipv4': peer.get('ipv4'),
+                    'ipv6': peer.get('ipv6'),
+                })
+        
+        if settings.IRC_NICK:
+            try:
+                irc_peers = irc.get_connection().get_peers()
+            except custom_exceptions.IrcClientException:
+                log.error("Retrieving IRC peers failed")
+                irc_peers = []
+                
+            for peer in irc_peers:
+
+                try:
+                    ipv4 = (yield client.getHostByName(peer))
+                except Exception:
+                    log.error("Failed to resolve hostname '%s'" % peer['hostname'])
+                    continue
+                
+                peers.append({
+                    'hostname': peer,
+                    'trusted': False,
+                    'weight': 0,
+                    'ipv4': ipv4,
+                    'ipv6': None,
+                })
+        
         defer.returnValue(peers)
     
     @admin

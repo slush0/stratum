@@ -14,15 +14,30 @@ class SocketTransportFactory(ServerFactory):
 class SocketTransportClientFactory(ReconnectingClientFactory):
     protocol = ClientProtocol
 
-    def __init__(self, host, port, debug=False, signing_key=None, signing_id=None, on_connect=None):
+    def __init__(self, host, port, allow_trusted=True, allow_untrusted=False, debug=False, signing_key=None, signing_id=None, on_connect=None):
         self.debug = debug
         self.signing_key = signing_key
         self.signing_id = signing_id
         self.client = None # Reference to open connection
         self.on_connect = on_connect
+        self.peers_trusted = {}
+        self.peers_untrusted = {}
+        self.main_host = (host, port)
+
         #reactor.callLater(10, self.connection_timeout)
         reactor.connectTCP(host, port, self)
 
+    def add_peers(self, peers):
+        # FIXME: Use this list when current connection fails
+        
+        for peer in peers:
+            hash = "%s%s%s" % (peer['hostname'], peer['ipv4'], peer['ipv6'])
+            
+            which = self.peers_trusted if peer['trusted'] else self.peers_untrusted
+            which[hash] = peer
+                 
+        print self.peers_trusted
+        print self.peers_untrusted
     '''
     def connection_timeout(self):
         if self.client:

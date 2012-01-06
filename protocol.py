@@ -228,10 +228,14 @@ class ClientProtocol(Protocol):
     def connectionMade(self):
         Protocol.connectionMade(self)
         self.factory.client = self
+        
         if self.factory.on_connect:
             self.factory.on_connect.callback(True)
             self.factory.on_connect = None
-        
+            
+        d = self.rpc('node.get_peers', [])
+        d.addCallback(self.factory.add_peers)
+                
     def connectionLost(self, reason):
         self.factory.client = None
         Protocol.connectionLost(self, reason)

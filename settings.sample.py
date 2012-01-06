@@ -1,6 +1,10 @@
 '''
 This is example configuration for Stratum server.
 Please rename it to settings.py and fill correct values.
+
+Dependencies (FIXME: write real howto):
+*  ecdsa (signatures)
+*  twisted-words (IRC bot) 
 '''
 
 # ******************** GENERAL SETTINGS ***************
@@ -23,6 +27,9 @@ LOGLEVEL = 'DEBUG'
 THREAD_POOL_SIZE = 30
 
 # ******************** TRANSPORTS *********************
+
+# Hostname or external IP to expose
+HOSTNAME = 'stratum.example.com'
 
 # Port used for Socket transport. Use 'None' for disabling the transport.
 LISTEN_SOCKET_TRANSPORT = 3333
@@ -68,7 +75,29 @@ SIGNING_KEY = None # Message signing is disabled
 # Origin of signed messages. Provide some unique string,
 # ideally URL where users can find some information about your identity
 SIGNING_ID = None
-SIGNING_ID = 'stratum.somedomain.com'
+#SIGNING_ID = 'stratum.somedomain.com' # Use custom string
+#SIGNING_ID = HOSTNAME # Use hostname as the signing ID
+
+# *********************** PEER CONFIGURATION *************
+
+#IRC_NICK = None # Skip IRC registration
+IRC_NICK = "stratum" # Use nickname of your choice
+
+# Which hostname / external IP expose in IRC room
+# This should be official HOSTNAME for normal operation.
+IRC_HOSTNAME = HOSTNAME
+
+# Hardcoded list of Stratum nodes for clients to switch when this node is not available.
+PEERS = [
+    {
+        'hostname': 'stratum.bitcoin.cz',
+        'trusted': True, # This node is trustworthy
+        'weight': -1, # Higher number means higher priority for selection.
+                      # -1 will work mostly as a backup when other servers won't work.
+                      # (IRC peers have weight=0 automatically).
+    },
+]
+
 
 '''
 DATABASE_DRIVER = 'MySQLdb'

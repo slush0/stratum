@@ -24,6 +24,7 @@ import OpenSSL.SSL
 
 import socket_transport
 import http_transport
+import irc
 
 try:
     import settings
@@ -76,6 +77,9 @@ def setup_services():
             https = internet.SSLServer(settings.LISTEN_HTTPS_TRANSPORT, httpsite, contextFactory = sslContext)
             https.setServiceParent(application)
         
+    if settings.IRC_NICK:
+        reactor.connectTCP("irc.freenode.net", 6667, irc.IrcLurkerFactory('#stratum-nodes', settings.IRC_NICK, settings.IRC_HOSTNAME))
+    
     '''
     wsgiThreadPool = ThreadPool()
     wsgiThreadPool.start()

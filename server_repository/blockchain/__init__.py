@@ -7,6 +7,9 @@ import settings
 import p2pnode
 p2pnode.run(settings.BITCOIN_TRUSTED_HOST)
 
+import logger
+log = logger.get_logger('service.blockchain')
+
 class BlockchainBlockService(GenericService):
     service_type = 'blockchain.block'
     service_vendor = 'Electrum'

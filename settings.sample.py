@@ -56,13 +56,19 @@ HTTP_SESSION_TIMEOUT = 3600 # in seconds
 # User agent used in HTTP requests (for both HTTP transports and for proxy calls from services)
 USER_AGENT = 'Stratum/0.1'
 
+# Provide human-friendly user interface on HTTP transports for browsing exposed services.
+BROWSER_ENABLE = True
+
+# ******************** BITCOIND SETTINGS ************
+
 # Hostname and credentials for one trusted Bitcoin node ("Satoshi's client").
-# Stratum uses both P2P port (which is 8333 already) and RPC port
+# Stratum uses both P2P port (which is 8333 everytime) and RPC port
 BITCOIN_TRUSTED_HOST = '127.0.0.1'
-BITCOIN_TRUSTED_PORT = 8332
+BITCOIN_TRUSTED_PORT = 8332 # RPC port
 BITCOIN_TRUSTED_USER = 'stratum'
 BITCOIN_TRUSTED_PASSWORD = '***somepassword***'
 
+# ******************** OTHER CORE SETTINGS *********************
 # Use "echo '<yourpassword>' | sha256sum | cut -f1 -d' ' "
 # for calculating SHA256 of your preferred password
 ADMIN_PASSWORD_SHA256 = None # Admin functionality is disabled
@@ -78,10 +84,10 @@ SIGNING_ID = None
 #SIGNING_ID = 'stratum.somedomain.com' # Use custom string
 #SIGNING_ID = HOSTNAME # Use hostname as the signing ID
 
-# *********************** PEER CONFIGURATION *************
+# *********************** IRC / PEER CONFIGURATION *************
 
-#IRC_NICK = None # Skip IRC registration
-IRC_NICK = "stratum" # Use nickname of your choice
+IRC_NICK = None # Skip IRC registration
+#IRC_NICK = "stratum" # Use nickname of your choice
 
 # Which hostname / external IP expose in IRC room
 # This should be official HOSTNAME for normal operation.

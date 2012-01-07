@@ -18,11 +18,11 @@ python 2.6 or 2.7
 linux-based system (should work on Mac OS too, not tested)
 
 Ubuntu:
-apt-get install python-dev
-apt-get install python-setuptools
-easy_install twisted
-easy_install ecdsa
-apt-get install python-twisted-words
+sudo apt-get install python-dev
+sudo apt-get install python-setuptools
+sudo easy_install twisted
+sudo easy_install ecdsa
+sudo apt-get install python-twisted-words
 
 Configuration
 =============

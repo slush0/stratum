@@ -1,5 +1,21 @@
+Description:
+============
+This is server implementation of Stratum protocol
+using asynchronous networking written in Python Twisted.
+
+Homepage: http://stratum.bitcoin.cz
+
+Contact to main developer:
+==========================
+Email info at bitcoin.cz
+Nickname slush at bitcointalk.org forum
+
 Installation
 ============
+
+Requirements:
+python 2.6 or 2.7
+linux-based system (should work on Mac OS too, not tested)
 
 Ubuntu:
 apt-get install python-dev
@@ -12,7 +28,13 @@ Configuration
 =============
 
 Copy settings.sample.py to settings.py
-Edit at least this values: HOSTNAME, BITCOIN_TRUSTED_*
+Edit at least those values: HOSTNAME, BITCOIN_TRUSTED_*
+
+For enabling message signatures, generate server's ECDSA key by
+python signature.py > signing_key.pem
+and fill correct values to SIGNING_KEY and SIGNING_ID (settings.py)
+
+TODO: Generating self-signed SSL certificate
 
 Startup
 =======

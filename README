@@ -1,0 +1,30 @@
+Installation
+============
+
+Ubuntu:
+apt-get install python-dev
+apt-get install python-setuptools
+easy_install twisted
+easy_install ecdsa
+apt-get install python-twisted-words
+
+Configuration
+=============
+
+Copy settings.sample.py to settings.py
+Edit at least this values: HOSTNAME, BITCOIN_TRUSTED_*
+
+Startup
+=======
+Start devel server:
+twistd -ny server.tac
+
+Devel server *without* lowlevel messages of Twisted:
+twistd -ny server.tac -l log/twistd.log
+ 
+Running in production
+=====================
+TODO: Guide for running twistd as a daemon, init scripts
+TODO: Loadbalancing using haproxy
+TODO: Tunelling 80/443 over Apache/Nginx
+Any volunteer for this ^ ?

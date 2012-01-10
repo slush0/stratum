@@ -22,8 +22,8 @@ sudo apt-get install python-dev
 sudo apt-get install python-setuptools
 sudo easy_install twisted
 sudo easy_install ecdsa
+sudo easy_install pyopenssl
 sudo apt-get install python-twisted-words
-sudo apt-get install python-openssl
 
 *) Debian don't have a 'sudo' command, please do the installation
 process as a root user.

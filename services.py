@@ -212,19 +212,16 @@ class ServiceDiscovery(GenericService):
         
         return out
     
-    def list_params(self, *args):
-        out = []
-        for arg in args:
-            (service_type, vendor, method) = ServiceFactory._split_method(arg)
-            service = ServiceFactory.lookup(service_type, vendor)
+    def list_params(self, method):
+        (service_type, vendor, meth) = ServiceFactory._split_method(method)
+        service = ServiceFactory.lookup(service_type, vendor)
             
-            # Load params and helper text from method attributes
-            func = service.__dict__[method]
-            params = getattr(func, 'params', None)
-            help_text = getattr(func, 'help_text', None)
-            
-            out.append((arg, help_text, params,))
-        return out
+        # Load params and helper text from method attributes
+        func = service.__dict__[meth]
+        params = getattr(func, 'params', None)
+        help_text = getattr(func, 'help_text', None)
+       
+	return (arg, help_text, params)     
     list_params.help_text = "Accepts name of methods and returns their description and available parameters. Example: 'firstbits.resolve', 'firstbits.create'"
     list_params.params = [('method1', 'string', 'Method to lookup for description and parameters.'),
                           ('methodN' ,'string', 'Another method to lookup')]

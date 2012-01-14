@@ -80,7 +80,7 @@ def ask_old_server(method, *args):
     if not len(args):
         args = ['',]
         
-    res = (yield get_page('http://ecdsa.org/electrum.php', method='POST',
+    res = (yield get_page('http://electrum.bitcoin.cz/electrum.php', method='POST',
                           headers={"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"},
                           payload=urllib.urlencode({'q': repr([method,] + list(args))})))
                           

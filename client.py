@@ -12,8 +12,9 @@ def main():
 
     # Try to connect to remote server
     d = defer.Deferred()
-    #f = SocketTransportClientFactory('stratum.bitcoin.cz', 3333, debug, None, None, d)
-    f = SocketTransportClientFactory('localhost', 3333,
+    hostname = 'london.stratum.bitcoin.cz'
+    #hostname = 'localhost'
+    f = SocketTransportClientFactory(hostname, 3333,
                 allow_trusted=True,
                 allow_untrusted=False,
                 debug=debug,
@@ -54,7 +55,7 @@ def main():
     # and available methods on remote server
     print (yield f.rpc('discovery.list_services', []))
     print (yield f.rpc('discovery.list_vendors', ['firstbits',]))
-    print (yield f.rpc('discovery.list_methods', ['firstbits', 'firstbits.com',]))
+    print (yield f.rpc('discovery.list_methods', ['firstbits[firstbits.com]',]))
 
     # Example call of firstbits service
     print (yield f.rpc('firstbits.resolve', ['1MarekM',]))

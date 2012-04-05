@@ -33,9 +33,15 @@ class NodeService(GenericService):
     service_vendor = 'Electrum'
     is_default = True
         
+    def get_banner(self):
+        return "Dummy banner"
+
     @signature
     @defer.inlineCallbacks
     def get_peers(self):
+	'''
+	{"hostname": "stratum.bitcoin.cz", "trusted": True, "weight": 0, "transports": [{"type": "http", "proto": "ipv4", address: "192.168.1.1", "port": 80}, {"type": "http", "proto": "onion", "address": "56ufgh56ygh5.onion", "port": 80}]}
+	'''
         # FIXME: Cache result/DNS lookup
         peers = []
         

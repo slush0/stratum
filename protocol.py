@@ -3,7 +3,7 @@ import jsonical
 import time
 
 from twisted.protocols.basic import LineOnlyReceiver
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 
 import services
 import signature
@@ -229,6 +229,9 @@ class ClientProtocol(Protocol):
         Protocol.connectionMade(self)
         self.factory.client = self
         
+        if self.factory.timeout_handler:
+            self.factory.timeout_handler.cancel()
+            
         if self.factory.on_connect:
             self.factory.on_connect.callback(True)
             self.factory.on_connect = None
@@ -238,4 +241,12 @@ class ClientProtocol(Protocol):
                 
     def connectionLost(self, reason):
         self.factory.client = None
+
+        if self.factory.timeout_handler:
+            self.factory.timeout_handler.cancel()
+        
+        if self.factory.on_disconnect:
+            self.factory.on_disconnect.callback(True)
+            self.factory.on_disconnect = None
+            
         Protocol.connectionLost(self, reason)

@@ -131,8 +131,12 @@ class Root(Resource):
         self.debug = debug # This class acts as a 'factory', debug is used by Protocol
         
     def render_GET(self, request):
-        return "Welcome to %s server. Use HTTP POST to talk with the server." % settings.USER_AGENT
+        if not settings.BROWSER_ENABLE:
+            return "Welcome to %s server. Use HTTP POST to talk with the server." % settings.USER_AGENT
         
+        # TODO: Web browser
+        return "Web browser not implemented yet"
+    
     def render_POST(self, request):
         session = request.getSession(cookie_prefix='STRATUM_SESSION')
         

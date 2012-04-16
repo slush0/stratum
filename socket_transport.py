@@ -14,17 +14,21 @@ class SocketTransportFactory(ServerFactory):
 class SocketTransportClientFactory(ReconnectingClientFactory):
     protocol = ClientProtocol
 
-    def __init__(self, host, port, allow_trusted=True, allow_untrusted=False, debug=False, signing_key=None, signing_id=None, on_connect=None):
+    def __init__(self, host, port, allow_trusted=True, allow_untrusted=False,
+                 debug=False, signing_key=None, signing_id=None,
+                 on_connect=None, on_disconnect=None, is_reconnecting=True):
         self.debug = debug
+        self.is_reconnecting = is_reconnecting
         self.signing_key = signing_key
         self.signing_id = signing_id
         self.client = None # Reference to open connection
         self.on_connect = on_connect
+        self.on_disconnect = on_disconnect
         self.peers_trusted = {}
         self.peers_untrusted = {}
         self.main_host = (host, port)
 
-        #reactor.callLater(10, self.connection_timeout)
+        self.timeout_handler = reactor.callLater(10, self.connection_timeout)
         reactor.connectTCP(host, port, self)
 
     def add_peers(self, peers):
@@ -39,8 +43,9 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         #print self.peers_trusted
         #print self.peers_untrusted
         
-    '''
     def connection_timeout(self):
+        self.timeout_handler = None
+        
         if self.client:
             return
         
@@ -49,7 +54,6 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
             self.on_connect.errback(e)
         else:
             raise e
-    '''
         
     def rpc(self, *args, **kwargs):
         if not self.client:
@@ -63,15 +67,18 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         
         return self.client.rpc_multi(*args, **kwargs)
 
+    
     def buildProtocol(self, addr):
         self.resetDelay()
         return ReconnectingClientFactory.buildProtocol(self, addr)
         
     def clientConnectionLost(self, connector, reason):
         #print 'Connection to server lost', reason
-        ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
+        if self.is_reconnecting:
+            ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
         
     def clientConnectionFailed(self, connector, reason):
         #print 'Connection failed. Reason:', reason
-        ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)        
+        if self.is_reconnecting:
+            ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)        
         

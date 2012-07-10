@@ -40,6 +40,12 @@ LISTEN_HTTP_TRANSPORT = 80
 # Port used for HTTPS Poll transport
 LISTEN_HTTPS_TRANSPORT = 443
 
+# Port used for WebSocket transport, 'None' for disabling WS
+LISTEN_WS_TRANSPORT = None
+
+# Port used for secure WebSocket, 'None' for disabling WSS
+LISTEN_WSS_TRANSPORT = None
+
 # ******************** SSL SETTINGS ******************
 
 # Private key and certification file for SSL protected transports

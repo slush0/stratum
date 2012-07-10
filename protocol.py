@@ -3,7 +3,7 @@ import jsonical
 import time
 
 from twisted.protocols.basic import LineOnlyReceiver
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 
 import services
 import signature
@@ -41,6 +41,11 @@ class Protocol(LineOnlyReceiver):
         log.debug("Connected %s" % self.transport.getPeer().host)
         connection_registry.ConnectionRegistry.add_connection(self)
     
+    def transport_write(self, data):
+        '''Overwrite this if transport needs some extra care about data written
+        to the socket, like adding message format in websocket''' 
+        self.transport.write(data)
+        
     def connectionLost(self, reason):
         connection_registry.ConnectionRegistry.remove_connection(self)
 
@@ -51,7 +56,7 @@ class Protocol(LineOnlyReceiver):
         if self.factory.debug:
             log.debug("< %s" % serialized)
                     
-        self.transport.write("%s\n" % serialized)
+        self.transport_write("%s\n" % serialized)
         return request_id
         
     def writeJsonResponse(self, data, message_id, use_signature=False, sign_method='', sign_params=[]):        
@@ -64,7 +69,7 @@ class Protocol(LineOnlyReceiver):
         if self.factory.debug:
             log.debug("< %s" % serialized)        
 
-        self.transport.write("%s\n" % serialized)
+        self.transport_write("%s\n" % serialized)
 
     def writeJsonError(self, code, message, message_id, use_signature=False, sign_method='', sign_params=[]):       
         if use_signature:
@@ -73,7 +78,7 @@ class Protocol(LineOnlyReceiver):
         else:
             serialized = jsonical.dumps({'id': message_id, 'result': None, 'error': (code, message)})
             
-        self.transport.write("%s\n" % serialized)
+        self.transport_write("%s\n" % serialized)
 
     def writeGeneralError(self, message, code=-1):
         log.error(message)
@@ -172,6 +177,7 @@ class Protocol(LineOnlyReceiver):
                 meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
             
         else:
+            request_counter.decrease()
             raise custom_exceptions.ProtocolException("Cannot handle message '%s'" % line)
           
     @defer.inlineCallbacks
@@ -234,7 +240,6 @@ class ClientProtocol(Protocol):
             self.factory.timeout_handler = None
             
         if self.factory.on_connect:
-            
             self.factory.on_connect.callback(True)
             self.factory.on_connect = None
             
@@ -246,7 +251,7 @@ class ClientProtocol(Protocol):
 
         if self.factory.timeout_handler:
             self.factory.timeout_handler.cancel()
-        
+            self.factory.timeout_handler = None
         
         if self.factory.on_disconnect:
             self.factory.on_disconnect.callback(True)

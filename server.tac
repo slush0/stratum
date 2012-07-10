@@ -19,11 +19,12 @@ from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 from twisted.python.threadpool import ThreadPool
 from twisted.python import log
-from twisted.python.logfile import DailyLogFile
+#from twisted.python.logfile import DailyLogFile
 import OpenSSL.SSL
 
 import socket_transport
 import http_transport
+import websocket_transport
 import irc
 
 try:
@@ -42,6 +43,14 @@ def setup_services():
     except:
         print "Loading of signing key '%s' failed, protocol messages cannot be signed." % settings.SIGNING_KEY
         signing_key = None
+        
+    # Attach HTTPS Poll Transport service to application
+    try:
+        sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
+    except OpenSSL.SSL.Error:
+        sslContext = None
+        print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
+        print "This will skip all SSL-based transports."
         
     # Load all services in /service_repository/ directory.
     import server_repository
@@ -66,17 +75,22 @@ def setup_services():
         http = internet.TCPServer(settings.LISTEN_HTTP_TRANSPORT, httpsite)
         http.setServiceParent(application)
 
-    if settings.LISTEN_HTTPS_TRANSPORT:
-        # Attach HTTPS Poll Transport service to application
-        try:
-            sslContext = ssl.DefaultOpenSSLContextFactory(settings.SSL_PRIVKEY, settings.SSL_CACERT)
-        except OpenSSL.SSL.Error:
-            print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
-            print "Skipping HTTPS Poll transport."
-        else:
+    if settings.LISTEN_HTTPS_TRANSPORT and sslContext:
             https = internet.SSLServer(settings.LISTEN_HTTPS_TRANSPORT, httpsite, contextFactory = sslContext)
             https.setServiceParent(application)
-        
+    
+    if settings.LISTEN_WS_TRANSPORT:
+        from autobahn.websocket import listenWS
+        print "Starting WS transport on %d" % settings.LISTEN_WS_TRANSPORT
+        ws = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WS_TRANSPORT)
+        listenWS(ws)
+    
+    if settings.LISTEN_WSS_TRANSPORT and sslContext:  
+        from autobahn.websocket import listenWS
+        print "Starting WSS transport on %d" % settings.LISTEN_WSS_TRANSPORT
+        wss = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WSS_TRANSPORT, is_secure=True)
+        listenWS(wss, contextFactory=sslContext)
+    
     if settings.IRC_NICK:
         reactor.connectTCP(settings.IRC_SERVER, settings.IRC_PORT, irc.IrcLurkerFactory(settings.IRC_ROOM, settings.IRC_NICK, settings.IRC_HOSTNAME))
     
@@ -99,4 +113,5 @@ if settings.DEBUG:
     reactor.callLater(0, heartbeat)
 
 application = service.Application("stratum-server")
+print application
 setup_services()

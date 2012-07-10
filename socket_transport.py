@@ -31,9 +31,10 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.timeout_handler = reactor.callLater(10, self.connection_timeout)
         reactor.connectTCP(host, port, self)
 
+    '''
+    This shouldn't be a part of transport layer
     def add_peers(self, peers):
         # FIXME: Use this list when current connection fails
-        
         for peer in peers:
             hash = "%s%s%s" % (peer['hostname'], peer['ipv4'], peer['ipv6'])
             
@@ -42,7 +43,8 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
                  
         #print self.peers_trusted
         #print self.peers_untrusted
-        
+    '''
+         
     def connection_timeout(self):
         self.timeout_handler = None
         

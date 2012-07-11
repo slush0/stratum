@@ -53,7 +53,7 @@ def setup_services():
         print "This will skip all SSL-based transports."
         
     # Load all services in /service_repository/ directory.
-    import server_repository
+    import service_repository
 	
     # Set up thread pool size for service threads
     reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 

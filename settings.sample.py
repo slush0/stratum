@@ -35,16 +35,16 @@ HOSTNAME = 'stratum.example.com'
 LISTEN_SOCKET_TRANSPORT = 3333
 
 # Port used for HTTP Poll transport. Use 'None' for disabling the transport
-LISTEN_HTTP_TRANSPORT = 80
+LISTEN_HTTP_TRANSPORT = 8000
 
 # Port used for HTTPS Poll transport
-LISTEN_HTTPS_TRANSPORT = 443
+LISTEN_HTTPS_TRANSPORT = 8001
 
 # Port used for WebSocket transport, 'None' for disabling WS
-LISTEN_WS_TRANSPORT = None
+LISTEN_WS_TRANSPORT = 8002
 
 # Port used for secure WebSocket, 'None' for disabling WSS
-LISTEN_WSS_TRANSPORT = None
+LISTEN_WSS_TRANSPORT = 8003
 
 # ******************** SSL SETTINGS ******************
 

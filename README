@@ -32,14 +32,31 @@ process as a root user.
 Configuration
 =============
 
+a) Basic settings
 Copy settings.sample.py to settings.py
 Edit at least those values: HOSTNAME, BITCOIN_TRUSTED_*
 
+b) Message signatures
 For enabling message signatures, generate server's ECDSA key by
 python signature.py > signing_key.pem
 and fill correct values to SIGNING_KEY and SIGNING_ID (settings.py)
 
-TODO: Generating self-signed SSL certificate
+c) Creating keys for SSL-based transports
+For all SSL-based transports (HTTPS, WSS, ...) you'll need private key
+and certificate file. You can use certificates from any authority or you can
+generate self-signed certificates, which is helpful at least for testing.
+
+Following script will generate self-signed SSL certificate:
+
+#!/bin/bash
+openssl genrsa -des3 -out server.key 1024
+openssl req -new -key server.key -out server.csr
+cp server.key server.key.org
+openssl rsa -in server.key.org -out server.key
+openssl x509 -req -in server.csr -signkey server.key -out server.crt
+
+Then you have to fill SSL_PRIVKEY and SSL_CACERT in settings file with
+values 'server.key' and 'server.crt'.
 
 Startup
 =======

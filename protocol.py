@@ -1,5 +1,5 @@
 import json
-import jsonical
+#import jsonical
 import time
 
 from twisted.protocols.basic import LineOnlyReceiver
@@ -48,10 +48,10 @@ class Protocol(LineOnlyReceiver):
         
     def connectionLost(self, reason):
         connection_registry.ConnectionRegistry.remove_connection(self)
-
+       
     def writeJsonRequest(self, method, params, is_notification=False):
         request_id = None if is_notification else self._get_id() 
-        serialized = jsonical.dumps({'id': request_id, 'method': method, 'params': params})
+        serialized = json.dumps({'id': request_id, 'method': method, 'params': params})
 
         if self.factory.debug:
             log.debug("< %s" % serialized)
@@ -64,7 +64,7 @@ class Protocol(LineOnlyReceiver):
             serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, self.factory.signing_id, False,\
                 message_id, sign_method, sign_params, data, None)
         else:
-            serialized = jsonical.dumps({'id': message_id, 'result': data, 'error': None})
+            serialized = json.dumps({'id': message_id, 'result': data, 'error': None})
             
         if self.factory.debug:
             log.debug("< %s" % serialized)        
@@ -76,7 +76,7 @@ class Protocol(LineOnlyReceiver):
             serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, self.factory.signing_id, False,\
                 message_id, sign_method, sign_params, None, (code, message))
         else:
-            serialized = jsonical.dumps({'id': message_id, 'result': None, 'error': (code, message)})
+            serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message)})
             
         self.transport_write("%s\n" % serialized)
 

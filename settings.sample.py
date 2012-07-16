@@ -26,6 +26,11 @@ LOGLEVEL = 'DEBUG'
 # it should be slightly more, say 100-300.
 THREAD_POOL_SIZE = 30
 
+# Do you want to expose "example" service in server?
+# Useful for learning the server,you probably want to disable
+# this on production
+ENABLE_EXAMPLE_SERVICE = True
+
 # ******************** TRANSPORTS *********************
 
 # Hostname or external IP to expose
@@ -49,8 +54,9 @@ LISTEN_WSS_TRANSPORT = 8003
 # ******************** SSL SETTINGS ******************
 
 # Private key and certification file for SSL protected transports
-SSL_PRIVKEY = 'privkey.pem'
-SSL_CACERT = 'cacert.pem'
+# You can find howto for generating self-signed certificate in README file
+SSL_PRIVKEY = 'server.key'
+SSL_CACERT = 'server.crt'
 
 # ******************** HTTP SETTINGS *****************
 

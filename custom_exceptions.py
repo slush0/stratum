@@ -10,6 +10,9 @@ class UnauthorizedException(Exception):
 class SignatureException(Exception):
     pass
 
+class PubsubException(ServiceException):
+    pass
+
 class IrcClientException(Exception):
     pass
 

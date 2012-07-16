@@ -30,7 +30,7 @@ import irc
 try:
     import settings
 except ImportError:
-    print "settings.py missing? Maybe you want to copy and customize settings.sample.py?"
+    print "***** Is settings.py missing? Maybe you want to copy and customize settings.sample.py?"
 
 def setup_services():
 
@@ -52,9 +52,15 @@ def setup_services():
         print "Cannot initiate SSL context, are SSL_PRIVKEY or SSL_CACERT missing?"
         print "This will skip all SSL-based transports."
         
-    # Load all services in /service_repository/ directory.
-    import service_repository
+    # Load all services from service_repository module.
+    try:
+        import service_repository
+    except ImportError:
+        print "***** Is service_repository missing? Add service_repository module to your python path!"
 	
+    if settings.ENABLE_EXAMPLE_SERVICE:
+        import example_service
+        
     # Set up thread pool size for service threads
     reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 
     
@@ -81,13 +87,13 @@ def setup_services():
     
     if settings.LISTEN_WS_TRANSPORT:
         from autobahn.websocket import listenWS
-        print "Starting WS transport on %d" % settings.LISTEN_WS_TRANSPORT
+        log.msg("Starting WS transport on %d" % settings.LISTEN_WS_TRANSPORT)
         ws = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WS_TRANSPORT)
         listenWS(ws)
     
     if settings.LISTEN_WSS_TRANSPORT and sslContext:  
         from autobahn.websocket import listenWS
-        print "Starting WSS transport on %d" % settings.LISTEN_WSS_TRANSPORT
+        log.msg("Starting WSS transport on %d" % settings.LISTEN_WSS_TRANSPORT)
         wss = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WSS_TRANSPORT, is_secure=True)
         listenWS(wss, contextFactory=sslContext)
     

@@ -85,28 +85,19 @@ class Protocol(LineOnlyReceiver):
         return self.writeJsonError(code, message, None)
             
     def process_response(self, data, message_id, sign_method, sign_params, request_counter):
-        if isinstance(data, services.SignatureWrapper):
-            # Sign response object with server's private key
-            # TODO: Proxy signature details if presented in SignatureWrapper
-            self.writeJsonResponse(data.get_object(), message_id, True, sign_method, sign_params)
-        else:
-            self.writeJsonResponse(data, message_id)
-            
+        self.writeJsonResponse(data.result, message_id, data.sign, sign_method, sign_params)
         request_counter.decrease()
             
     def process_failure(self, failure, message_id, sign_method, sign_params, request_counter):
-        if isinstance(failure.value, services.SignatureWrapper):
-            # Strip SignatureWrapper object
-            failure.value = failure.value.get_object()
-            
-            code = -1
-            message = failure.getBriefTraceback()
-            self.writeJsonError(code, message, message_id, True, sign_method, sign_params)
-        else:
-            code = -1
-            message = failure.getBriefTraceback()
-            self.writeJsonError(code, message, message_id)
-            
+        sign = False
+        if isinstance(failure.value, services.ResultObject):
+            # Strip ResultObject
+            sign = failure.value.sign
+            failure.value = failure.value.result
+               
+        code = -1
+        message = failure.getBriefTraceback()
+        self.writeJsonError(code, message, message_id, sign, sign_method, sign_params)    
         request_counter.decrease()
         
     def dataReceived(self, data, request_counter=RequestCounter()):
@@ -149,7 +140,7 @@ class Protocol(LineOnlyReceiver):
                                         
         if msg_method:
             # It's a RPC call or notification
-            result = defer.maybeDeferred(services.ServiceFactory.call, msg_method, msg_params)
+            result = services.ServiceFactory.call(msg_method, msg_params, _connection_ref=self)
             if msg_id == None:
                 # It's notification, don't expect the response
                 request_counter.decrease()
@@ -158,7 +149,7 @@ class Protocol(LineOnlyReceiver):
                 result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
                 result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
             
-        elif (msg_result != None or msg_error) and msg_id:
+        elif msg_id: #(msg_result != None or msg_error) and msg_id:
             # It's a RPC response
             # Perform lookup to the table of waiting requests.
            
@@ -171,10 +162,12 @@ class Protocol(LineOnlyReceiver):
                 # When deferred object for given message ID isn't found, it's an error
                 raise custom_exceptions.ProtocolException("Lookup for deferred object for message ID '%s' failed." % msg_id)
 
-            if msg_result != None:
-                meta['defer'].callback(msg_result)
-            else:
+            # If there's an error, handle it as errback
+            # If both result and error are null, handle it as a success with blank result
+            if msg_error != None:
                 meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
+            else:
+                meta['defer'].callback(msg_result)
             
         else:
             request_counter.decrease()

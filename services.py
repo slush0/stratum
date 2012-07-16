@@ -1,11 +1,32 @@
-from twisted.internet import defer
+from twisted.internet import defer, threads
 from twisted.python import log
-#import types
+import hashlib
+import weakref
 import re
 
 import custom_exceptions
 
 VENDOR_RE = re.compile(r'\[(.*)\]')
+
+class ResultObject(object):
+    def __init__(self, result=None, sign=False, sign_algo=None, sign_id=None):
+        self.result = result
+        self.sign = sign
+        self.sign_algo = sign_algo
+        self.sign_id = sign_id     
+            
+def wrap_result_object(obj):
+    def _wrap(o):
+        if isinstance(o, ResultObject):
+            return o
+        return ResultObject(result=o)
+        
+    if isinstance(obj, defer.Deferred):
+        # We don't have result yet, just wait for it and wrap it later
+        obj.addCallback(_wrap)
+        return obj
+    
+    return _wrap(obj)
 
 class ServiceFactory(object):
     registry = {} # Mapping service_type -> vendor -> cls
@@ -31,17 +52,26 @@ class ServiceFactory(object):
         return (service_type, vendor, method_name)
     
     @classmethod
-    def call(cls, method, params):
-        (service_type, vendor, func) = cls._split_method(method)
-                    
+    def call(cls, method, params, _connection_ref=None):
+        (service_type, vendor, func_name) = cls._split_method(method)
+
         try:
-            func = cls.lookup(service_type, vendor=vendor)().__getattribute__(func)
+            if func_name.startswith('_'):
+                raise        
+        
+            _inst = cls.lookup(service_type, vendor=vendor)()
+            _inst._connection_ref = weakref.ref(_connection_ref)
+            func = _inst.__getattribute__(func_name)
             if not callable(func):
                 raise
         except:
-            raise custom_exceptions.MethodNotFoundException("Method '%s' not found for service '%s'" % (func, service_type))
+            raise custom_exceptions.MethodNotFoundException("Method '%s' not found for service '%s'" % (func_name, service_type))
         
-        return func(*params)
+        def _run(func, *params):
+            return wrap_result_object(func(*params))
+        
+        # Returns Defer which will lead to ResultObject sometimes
+        return defer.maybeDeferred(_run, func, *params)
         
     @classmethod
     def lookup(cls, service_type, vendor=None):
@@ -99,35 +129,22 @@ class ServiceFactory(object):
             except custom_exceptions.ServiceNotFoundException:
                 pass
         
+        setup_func = meta.get('_setup', None)
+        if setup_func != None:
+            _cls()._setup()
+
         ServiceFactory.registry.setdefault(service_type, {})
         ServiceFactory.registry[service_type][service_vendor] = _cls
-
+        
         log.msg("Registered %s for service '%s', vendor '%s' (default: %s)" % (_cls, service_type, service_vendor, is_default))
-
-class SignatureWrapper(object):
-    '''This wrapper around any object indicate that caller want to sign given object'''
-    def __init__(self, obj, sign=None, sign_algo=None, sign_id=None):
-        self.obj = obj
-        self.sign = sign
-        self.sign_algo = sign_algo
-        self.sign_id = sign_id
-        
-    def get_object(self):
-        return self.obj
-    
-    def get_sign(self):
-        if self.sign:
-            return (self.sign, self.sign_algo, self.sign_id)
-        
-        raise custom_exceptions.SignatureException("Signature not found")
-    
+               
 def signature(func):
     '''Decorate RPC method result with server's signature.
     This decorator can be chained with Deferred or inlineCallbacks, thanks to _sign_generator() hack.'''
 
     def _sign_generator(iterator):
         '''Iterate thru generator object, detects BaseException
-        and inject SignatureWrapper into exception's value (=result of inner method).
+        and inject signature into exception's value (=result of inner method).
         This is black magic because of decorating inlineCallbacks methods.
         See returnValue documentation for understanding this:
         http://twistedmatrix.com/documents/11.0.0/api/twisted.internet.defer.html#returnValue'''
@@ -136,36 +153,59 @@ def signature(func):
             try:
                 iterator.send((yield i))
             except BaseException as exc:
-                exc.value = SignatureWrapper(exc.value)
+                exc.value = wrap_result_object(exc.value)
+                exc.value.sign = True
                 raise
 
     def _sign_deferred(res):
-        return SignatureWrapper(res)
+        obj = wrap_result_object(res)
+        obj.sign = True
+        return obj
     
     def _sign_failure(fail):
-        fail.value = SignatureWrapper(fail.value)
+        fail.value = wrap_result_object(fail.value)
+        fail.value.sign = True
         return fail
     
-    def inner(*args, **kwargs):        
-        ret = func(*args, **kwargs)
-        if isinstance(ret, defer.Deferred):
-            ret.addCallback(_sign_deferred)
-            ret.addErrback(_sign_failure)
-            return ret
+    def inner(*args, **kwargs):   
+        ret = defer.maybeDeferred(func, *args, **kwargs)
+        #if isinstance(ret, defer.Deferred):
+        ret.addCallback(_sign_deferred)
+        ret.addErrback(_sign_failure)
+        return ret
+        #    return ret
         #elif isinstance(ret, types.GeneratorType):
         #    return _sign_generator(ret)
-        else:
-            return SignatureWrapper(ret)
+        #else:
+        #    ret = wrap_result_object(ret)
+        #    ret.sign = True
+        #    return ret
     return inner
 
 def synchronous(func):
     '''Run given method synchronously in separate thread and return the result.'''
-    # Local import, because services itself aren't depending on twisted
-    from twisted.internet import threads
     def inner(*args, **kwargs):
         return threads.deferToThread(func, *args, **kwargs)
     return inner
-    
+
+def admin(func):
+    '''Requires an extra first parameter with superadministrator password'''
+    import settings
+    def inner(*args, **kwargs):
+        if not len(args):
+            raise custom_exceptions.UnauthorizedException("Missing password")
+
+        if not settings.ADMIN_PASSWORD_SHA256:
+            raise custom_exceptions.UnauthorizedException("Admin password not set, RPC call disabled")
+
+        (password, args) = (args[1], [args[0],] + list(args[2:]))
+
+        if hashlib.sha256(password).hexdigest() != settings.ADMIN_PASSWORD_SHA256:
+            raise custom_exceptions.UnauthorizedException("Wrong password")
+
+        return func(*args, **kwargs)
+    return inner
+
 class ServiceMetaclass(type):
     def __init__(cls, name, bases, _dict):
         super(ServiceMetaclass, cls).__init__(name, bases, _dict)
@@ -177,8 +217,11 @@ class GenericService(object):
     service_vendor = None
     is_default = None
     
-    def ping(self, payload):
-        return payload
+    # Keep weak reference to connection which asked for current
+    # RPC call. Useful for pubsub mechanism, but use it with care.
+    # It does not need to point to actual and valid data, so
+    # you have to check if connection still exists every time.  
+    _connection_ref = None
     
 class ServiceDiscovery(GenericService):
     service_type = 'discovery'
@@ -221,7 +264,6 @@ class ServiceDiscovery(GenericService):
         params = getattr(func, 'params', None)
         help_text = getattr(func, 'help_text', None)
        
-	return (arg, help_text, params)     
-    list_params.help_text = "Accepts name of methods and returns their description and available parameters. Example: 'firstbits.resolve', 'firstbits.create'"
-    list_params.params = [('method1', 'string', 'Method to lookup for description and parameters.'),
-                          ('methodN' ,'string', 'Another method to lookup')]
+        return (help_text, params)     
+    list_params.help_text = "Accepts name of method and returns its description and available parameters. Example: 'firstbits.resolve'"
+    list_params.params = [('method', 'string', 'Method to lookup for description and parameters.'),]

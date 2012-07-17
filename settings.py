@@ -33,7 +33,10 @@ def setup():
         print "----------------"
         print "Custom settings:"
         for k, v in changes.items():
-            print k, ":", v
+            if 'passw' in k.lower():
+                print k, ": ********"
+            else:
+                print k, ":", v
         print "----------------"
         
 setup()

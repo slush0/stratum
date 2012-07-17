@@ -6,7 +6,7 @@ class ConnectionRegistry(object):
     
     @classmethod
     def add_connection(cls, conn):
-        cls.__connections[conn] = {'subscriptions': []} # Session data like subscriptions
+        cls.__connections[conn] = {'subscriptions': {}} # Session data like subscriptions
 
     @classmethod
     def remove_connection(cls, conn):

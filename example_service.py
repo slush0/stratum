@@ -66,10 +66,10 @@ class PubsubExampleService(GenericService):
     subscribe.params = [('period', 'int', 'Broadcast to the client only if timestamp%period==0. Use 1 for receiving an event in every second.'),]
     
     @pubsub.unsubscribe
-    def unsubscribe(self, period):
-        return TimeSubscription(period=period)
+    def unsubscribe(self, subscription_key):#period):
+        return subscription_key
     unsubscribe.help_text = "Stop broadcasting unix timestampt to the client."
-    unsubscribe.params = [('period', 'int', 'Must be the same number as in subscription.'),]
+    unsubscribe.params = [('subscription_key', 'string', 'Key obtained by calling of subscribe method.'),]
     
     def _emit_time_event(self):
         # This will emit a publish event,

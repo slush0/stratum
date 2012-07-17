@@ -32,14 +32,14 @@ process as a root user.
 Configuration
 =============
 
-a) Basic settings
-Copy settings.sample.py to settings.py
+a) Basic configuration
+Copy config_default.py to config.py
 Edit at least those values: HOSTNAME, BITCOIN_TRUSTED_*
 
 b) Message signatures
 For enabling message signatures, generate server's ECDSA key by
 python signature.py > signing_key.pem
-and fill correct values to SIGNING_KEY and SIGNING_ID (settings.py)
+and fill correct values to SIGNING_KEY and SIGNING_ID (config.py)
 
 c) Creating keys for SSL-based transports
 For all SSL-based transports (HTTPS, WSS, ...) you'll need private key
@@ -55,7 +55,7 @@ cp server.key server.key.org
 openssl rsa -in server.key.org -out server.key
 openssl x509 -req -in server.csr -signkey server.key -out server.crt
 
-Then you have to fill SSL_PRIVKEY and SSL_CACERT in settings file with
+Then you have to fill SSL_PRIVKEY and SSL_CACERT in config file with
 values 'server.key' and 'server.crt'.
 
 Startup

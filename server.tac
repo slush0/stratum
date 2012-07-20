@@ -88,13 +88,19 @@ def setup_services():
     if settings.LISTEN_WS_TRANSPORT:
         from autobahn.websocket import listenWS
         log.msg("Starting WS transport on %d" % settings.LISTEN_WS_TRANSPORT)
-        ws = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WS_TRANSPORT)
+        ws = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WS_TRANSPORT,
+                                                           debug=settings.DEBUG,
+                                                           signing_key=signing_key,
+                                                           signing_id=settings.SIGNING_ID)
         listenWS(ws)
     
     if settings.LISTEN_WSS_TRANSPORT and sslContext:  
         from autobahn.websocket import listenWS
         log.msg("Starting WSS transport on %d" % settings.LISTEN_WSS_TRANSPORT)
-        wss = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WSS_TRANSPORT, is_secure=True)
+        wss = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WSS_TRANSPORT, is_secure=True,
+                                                            debug=settings.DEBUG,
+                                                            signing_key=signing_key,
+                                                            signing_id=settings.SIGNING_ID)
         listenWS(wss, contextFactory=sslContext)
     
     if settings.IRC_NICK:

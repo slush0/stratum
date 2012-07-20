@@ -119,5 +119,4 @@ if settings.DEBUG:
     reactor.callLater(0, heartbeat)
 
 application = service.Application("stratum-server")
-print application
 setup_services()

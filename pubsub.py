@@ -89,8 +89,8 @@ class Pubsub(object):
         subscription.connection_ref = weakref.ref(connection)
         session['subscriptions'][key] = subscription
         
-        cls.__subscriptions.setdefault(subscription.event, weakref.WeakValueDictionary())
-        cls.__subscriptions[subscription.event][key] = subscription
+        cls.__subscriptions.setdefault(subscription.event, weakref.WeakKeyDictionary())
+        cls.__subscriptions[subscription.event][subscription] = None
         return (subscription.event, key)
     
     @classmethod
@@ -121,7 +121,7 @@ class Pubsub(object):
     
     @classmethod
     def emit(cls, event, *args, **kwargs):
-        for subscription in cls.__subscriptions.get(event, weakref.WeakValueDictionary()).itervaluerefs():
+        for subscription in cls.__subscriptions.get(event, weakref.WeakKeyDictionary()).iterkeyrefs():
             subscription = subscription()
             if subscription == None:
                 # Subscriber is no more connected

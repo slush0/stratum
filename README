@@ -61,14 +61,14 @@ values 'server.key' and 'server.crt'.
 Startup
 =======
 Start devel server:
-twistd -ny server.tac
+twistd -ny launcher.tac
 
 Devel server *without* lowlevel messages of Twisted:
-twistd -ny server.tac -l log/twistd.log
+twistd -ny launcher.tac -l log/twistd.log
  
 Running in production
 =====================
 TODO: Guide for running twistd as a daemon, init scripts
-TODO: Loadbalancing using haproxy
-TODO: Tunelling 80/443 over Apache/Nginx
+TODO: Loadbalancing and port redirecting using haproxy
+TODO: Tunelling on 80/443 using stunnel
 Any volunteer for this ^ ?

@@ -148,6 +148,7 @@ class Root(Resource):
         request.setHeader('content-type', 'application/stratum')
         request.setHeader('server', settings.USER_AGENT)
         request.setHeader('x-session-timeout', session.sessionTimeout)
+        request.setHeader('access-control-allow-origin', '*') # Allow access from any other domain
           
         # Update client's IP address     
         session.transport.peer = request.getHost()

@@ -30,7 +30,7 @@ class Transport(object):
         return self.peer
     
     def write(self, data):
-        if len(self.buffer) > settings.HTTP_BUFFER_LIMIT:
+        if len(self.buffer) >= settings.HTTP_BUFFER_LIMIT:
             # Drop first (oldest) item in buffer
             # if buffer crossed allowed limit.
             # This isn't totally exact, because one record in buffer

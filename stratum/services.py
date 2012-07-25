@@ -53,7 +53,10 @@ class ServiceFactory(object):
     
     @classmethod
     def call(cls, method, params, _connection_ref=None):
-        (service_type, vendor, func_name) = cls._split_method(method)
+        try:
+            (service_type, vendor, func_name) = cls._split_method(method)
+        except ValueError:
+            raise custom_exceptions.MethodNotFoundException("Method name parsing failed. You *must* use format <service name>.<method name>, e.g. 'example.ping'")
 
         try:
             if func_name.startswith('_'):

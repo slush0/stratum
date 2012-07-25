@@ -180,9 +180,14 @@ class Root(Resource):
                 session.transport.push_url = callback_url 
                   
         data = request.content.read()
-        wait = defer.Deferred()
-        wait.addCallback(self._finish, request, session.transport, session.lock)
-        proto.dataReceived(data, request_counter=RequestCounter(wait))
+        
+        if data:
+            wait = defer.Deferred()
+            wait.addCallback(self._finish, request, session.transport, session.lock)
+            proto.dataReceived(data, request_counter=RequestCounter(wait))
+        else:
+            # Ping message (empty request) of HTTP Polling
+            self._finish(None, request, session.transport, session.lock) 
         
 
     @classmethod        

@@ -30,6 +30,15 @@ class Transport(object):
         return self.peer
     
     def write(self, data):
+        if len(self.buffer) > settings.HTTP_BUFFER_LIMIT:
+            # Drop first (oldest) item in buffer
+            # if buffer crossed allowed limit.
+            # This isn't totally exact, because one record in buffer
+            # can teoretically contains more than one message (divided by \n),
+            # but current server implementation don't store responses in this way,
+            # so counting exact number of messages will lead to unnecessary overhead.
+            self.buffer.pop(0)
+            
         self.buffer.append(data)
             
         if not self.lock.is_locked() and self.push_url:

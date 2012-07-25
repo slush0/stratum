@@ -61,6 +61,11 @@ SSL_CACERT = 'server.crt'
 # Low value leads to more frequent session reinitializing (like downloading address history).
 HTTP_SESSION_TIMEOUT = 3600 # in seconds
 
+# Maximum number of messages (notifications, responses) waiting to delivery to HTTP Poll clients.
+# Buffer length is PER CONNECTION. High value will consume a lot of RAM,
+# short history will cause that in some edge cases clients won't receive older events.
+HTTP_BUFFER_LIMIT = 10000
+
 # User agent used in HTTP requests (for both HTTP transports and for proxy calls from services)
 USER_AGENT = 'Stratum/0.1'
 

@@ -1,9 +1,9 @@
 from twisted.python import log
-import server
-import settings
+import stratum
+import stratum.settings as settings
 
 # This variable is used as an application handler by twistd 
-application = server.setup()
+application = stratum.setup()
 
 from twisted.internet import reactor
 
@@ -21,4 +21,4 @@ except ImportError:
     print "***** Is service_repository missing? Add service_repository module to your python path!"
 
 if settings.ENABLE_EXAMPLE_SERVICE:
-    import example_service
+    import stratum.example_service

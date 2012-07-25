@@ -18,6 +18,9 @@ def setup():
     except ImportError:
         print "***** Is configs.py missing? Maybe you want to copy and customize config_default.py?"
 
+    if settings.ENABLE_EXAMPLE_SERVICE:
+        import stratum.example_service
+
     import socket_transport
     import http_transport
     import websocket_transport

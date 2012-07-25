@@ -19,6 +19,3 @@ try:
     import service_repository
 except ImportError:
     print "***** Is service_repository missing? Add service_repository module to your python path!"
-
-if settings.ENABLE_EXAMPLE_SERVICE:
-    import stratum.example_service

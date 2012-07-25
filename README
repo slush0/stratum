@@ -17,14 +17,23 @@ Requirements:
 python 2.6 or 2.7
 linux-based system (should work on Mac OS too, not tested)
 
-Ubuntu & Debian*:
+Following instructions will work on Ubuntu & Debian*:
+
+a) From GIT, for developers
+git clone git://gitorious.org/stratum/server.git
 sudo apt-get install python-dev
-sudo apt-get install python-setuptools
-sudo easy_install twisted
-sudo easy_install ecdsa
-sudo easy_install pyopenssl
-sudo easy_install autobahn
-sudo apt-get install python-twisted-words
+sudo python setup.py develop
+
+b) From package, permanent install
+sudo apt-get install python-dev
+sudo python setup.py install
+
+#sudo apt-get install python-setuptools
+#sudo easy_install twisted
+#sudo easy_install ecdsa
+#sudo easy_install pyopenssl
+#sudo easy_install autobahn
+#sudo apt-get install python-twisted-words
 
 *) Debian don't have a 'sudo' command, please do the installation
 process as a root user.

@@ -4,6 +4,7 @@ import time
 
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import defer
+from twisted.python.failure import Failure
 
 import services
 import signature
@@ -71,18 +72,18 @@ class Protocol(LineOnlyReceiver):
 
         self.transport_write("%s\n" % serialized)
 
-    def writeJsonError(self, code, message, message_id, use_signature=False, sign_method='', sign_params=[]):       
+    def writeJsonError(self, code, message, traceback, message_id, use_signature=False, sign_method='', sign_params=[]):       
         if use_signature:
             serialized = signature.jsonrpc_dumps_sign(self.factory.signing_key, self.factory.signing_id, False,\
-                message_id, sign_method, sign_params, None, (code, message))
+                message_id, sign_method, sign_params, None, (code, message, traceback))
         else:
-            serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message)})
+            serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message, traceback)})
             
         self.transport_write("%s\n" % serialized)
 
     def writeGeneralError(self, message, code=-1):
         log.error(message)
-        return self.writeJsonError(code, message, None)
+        return self.writeJsonError(code, message, None, None)
             
     def process_response(self, data, message_id, sign_method, sign_params, request_counter):
         self.writeJsonResponse(data.result, message_id, data.sign, sign_method, sign_params)
@@ -96,8 +97,8 @@ class Protocol(LineOnlyReceiver):
             failure.value = failure.value.result
                
         code = -1
-        message = failure.getBriefTraceback()
-        self.writeJsonError(code, message, message_id, sign, sign_method, sign_params)    
+        traceback = failure.getBriefTraceback()
+        self.writeJsonError(code, str(failure.value), str(traceback), message_id, sign, sign_method, sign_params)    
         request_counter.decrease()
         
     def dataReceived(self, data, request_counter=RequestCounter()):
@@ -140,14 +141,20 @@ class Protocol(LineOnlyReceiver):
                                         
         if msg_method:
             # It's a RPC call or notification
-            result = services.ServiceFactory.call(msg_method, msg_params, _connection_ref=self)
-            if msg_id == None:
-                # It's notification, don't expect the response
-                request_counter.decrease()
-            else:
-                # It's a RPC call
-                result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
-                result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
+            try:
+                result = services.ServiceFactory.call(msg_method, msg_params, _connection_ref=self)
+            except Exception as exc:
+                failure = Failure()
+                self.process_failure(failure, msg_id, msg_method, msg_params, request_counter)
+
+            else:    
+                if msg_id == None:
+                    # It's notification, don't expect the response
+                    request_counter.decrease()
+                else:
+                    # It's a RPC call
+                    result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
+                    result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
             
         elif msg_id: #(msg_result != None or msg_error) and msg_id:
             # It's a RPC response
@@ -165,7 +172,7 @@ class Protocol(LineOnlyReceiver):
             # If there's an error, handle it as errback
             # If both result and error are null, handle it as a success with blank result
             if msg_error != None:
-                meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1]))
+                meta['defer'].errback(custom_exceptions.RemoteServiceException(msg_error[0], msg_error[1], msg_error[2]))
             else:
                 meta['defer'].callback(msg_result)
             

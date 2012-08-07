@@ -2,7 +2,7 @@
 from distribute_setup import use_setuptools
 use_setuptools()
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='Stratum',
       version='0.1',
@@ -11,5 +11,5 @@ setup(name='Stratum',
       author_email='info@bitcion.cz',
       url='http://stratum.bitcoin.cz',
       packages=['stratum',],
-      requires=['twisted', 'ecdsa', 'pyopenssl', 'autobahn', 'TwistedWords'],
+      install_requires=['twisted', 'ecdsa', 'pyopenssl', 'autobahn',]# 'Twisted%20Words'],
      )

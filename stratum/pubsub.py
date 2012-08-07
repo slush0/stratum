@@ -87,6 +87,7 @@ class Pubsub(object):
             raise custom_exceptions.PubsubException("No session found")
         
         subscription.connection_ref = weakref.ref(connection)
+        session.setdefault('subscriptions', {})
         session['subscriptions'][key] = subscription
         
         cls.__subscriptions.setdefault(subscription.event, weakref.WeakKeyDictionary())

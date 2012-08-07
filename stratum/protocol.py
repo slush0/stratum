@@ -180,39 +180,6 @@ class Protocol(LineOnlyReceiver):
             request_counter.decrease()
             raise custom_exceptions.ProtocolException("Cannot handle message '%s'" % line)
           
-    @defer.inlineCallbacks
-    def rpc_multi(self, methods):
-        '''
-        Expect list of three-tuples (method, list-of-params, is_notification).
-        '''
-        
-        responses = []
-        for i, m in list(enumerate(methods)):
-            
-            method, params, is_notification = m
-            request_id = self.writeJsonRequest(method, params, is_notification)
-        
-            if is_notification:
-                responses.append(None)
-            else:
-                def on_response(response, i):
-                    responses[i] = response
-                
-                d = defer.Deferred()
-                d.addCallback(on_response, i)               
-                self.lookup_table[request_id] = {'defer': d, 'method': method, 'params': params}
-                responses.append(d) # Add defer placeholder instead of result
-         
-        # Wait until all placeholders will be replaced by real responses
-        for i in range(len(responses)):
-            if isinstance(responses[i], defer.Deferred):
-                yield responses[i]
-            
-        # Translate dictionary into list
-        #responses = [ responses_dict[i] for i in range(len(responses_dict.keys())) ]
-        defer.returnValue(responses)
-        
-    @defer.inlineCallbacks
     def rpc(self, method, params, is_notification=False):
         '''
             This method performs remote RPC call.
@@ -224,11 +191,12 @@ class Protocol(LineOnlyReceiver):
 
         request_id = self.writeJsonRequest(method, params, is_notification)
 
-        if not is_notification:
-            d = defer.Deferred()
-            self.lookup_table[request_id] = {'defer': d, 'method': method, 'params': params}
-            response = (yield d)
-            defer.returnValue(response)
+        if is_notification:
+            return
+
+        d = defer.Deferred()
+        self.lookup_table[request_id] = {'defer': d, 'method': method, 'params': params}
+        return d
             
 class ClientProtocol(Protocol):
     def connectionMade(self):

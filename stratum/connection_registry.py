@@ -1,12 +1,13 @@
 import weakref
 from twisted.internet import reactor
+from services import GenericService
 
 class ConnectionRegistry(object):
     __connections = weakref.WeakKeyDictionary()
     
     @classmethod
     def add_connection(cls, conn):
-        cls.__connections[conn] = {'subscriptions': {}} # Session data like subscriptions
+        cls.__connections[conn] = {} # Session data like subscriptions
 
     @classmethod
     def remove_connection(cls, conn):
@@ -17,8 +18,11 @@ class ConnectionRegistry(object):
     
     @classmethod
     def get_session(cls, conn):
-        #if isinstance(conn, weakref.ref):
-        #    conn = conn()
+        if isinstance(conn, weakref.ref):
+            conn = conn()
+            
+        if isinstance(conn, GenericService):
+            conn = conn._connection_ref()
             
         if conn == None:
             return None

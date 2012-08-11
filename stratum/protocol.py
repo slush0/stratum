@@ -6,7 +6,8 @@ from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import defer
 from twisted.python.failure import Failure
 
-import services
+#import services
+import event_handler
 import signature
 import custom_exceptions
 import connection_registry
@@ -31,6 +32,9 @@ class RequestCounter(object):
 class Protocol(LineOnlyReceiver):
     delimiter = '\n'
     
+    def __init__(self, event_handler=event_handler.GenericEventHandler()):
+        self.event_handler = event_handler
+        
     def _get_id(self):
         self.request_id += 1
         return self.request_id
@@ -38,6 +42,7 @@ class Protocol(LineOnlyReceiver):
     def connectionMade(self):
         self.request_id = 0    
         self.lookup_table = {}
+        self.event_handler = self.factory.event_handler()
     
         log.debug("Connected %s" % self.transport.getPeer().host)
         connection_registry.ConnectionRegistry.add_connection(self)
@@ -91,12 +96,12 @@ class Protocol(LineOnlyReceiver):
             
     def process_failure(self, failure, message_id, sign_method, sign_params, request_counter):
         sign = False
-        if isinstance(failure.value, services.ResultObject):
-            # Strip ResultObject
-            sign = failure.value.sign
-            failure.value = failure.value.result
-               
         code = -1
+        #if isinstance(failure.value, services.ResultObject):
+        #    # Strip ResultObject
+        #    sign = failure.value.sign
+        #    failure.value = failure.value.result
+        
         traceback = failure.getBriefTraceback()
         self.writeJsonError(code, str(failure.value), str(traceback), message_id, sign, sign_method, sign_params)    
         request_counter.decrease()
@@ -142,7 +147,7 @@ class Protocol(LineOnlyReceiver):
         if msg_method:
             # It's a RPC call or notification
             try:
-                result = services.ServiceFactory.call(msg_method, msg_params, _connection_ref=self)
+                result = self.event_handler.handle_event(msg_method, msg_params, connection_ref=self)
             except Exception as exc:
                 failure = Failure()
                 self.process_failure(failure, msg_id, msg_method, msg_params, request_counter)

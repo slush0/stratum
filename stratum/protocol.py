@@ -202,7 +202,7 @@ class Protocol(LineOnlyReceiver):
         d = defer.Deferred()
         self.lookup_table[request_id] = {'defer': d, 'method': method, 'params': params}
         return d
-            
+                    
 class ClientProtocol(Protocol):
     def connectionMade(self):
         Protocol.connectionMade(self)
@@ -211,6 +211,11 @@ class ClientProtocol(Protocol):
         if self.factory.timeout_handler:
             self.factory.timeout_handler.cancel()
             self.factory.timeout_handler = None
+
+        if isinstance(getattr(self.factory, 'after_connect', None), list):
+            log.debug("Resuming connection: %s" % self.factory.after_connect)
+            for cmd in self.factory.after_connect:
+                self.rpc(cmd[0], cmd[1])
             
         if self.factory.on_connect:
             self.factory.on_connect.callback(True)

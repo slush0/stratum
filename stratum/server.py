@@ -21,6 +21,8 @@ def setup():
     if settings.ENABLE_EXAMPLE_SERVICE:
         import stratum.example_service
 
+    from services import ServiceEventHandler
+    
     import socket_transport
     import http_transport
     import websocket_transport
@@ -54,11 +56,13 @@ def setup():
         socket = internet.TCPServer(settings.LISTEN_SOCKET_TRANSPORT,
                                 socket_transport.SocketTransportFactory(debug=settings.DEBUG,
                                                                         signing_key=signing_key,
-                                                                        signing_id=settings.SIGNING_ID))
+                                                                        signing_id=settings.SIGNING_ID,
+                                                                        event_handler=ServiceEventHandler))
         socket.setServiceParent(application)
 
     # Build the HTTP interface
-    httpsite = Site(http_transport.Root(debug=settings.DEBUG, signing_key=signing_key, signing_id=settings.SIGNING_ID))
+    httpsite = Site(http_transport.Root(debug=settings.DEBUG, signing_key=signing_key, signing_id=settings.SIGNING_ID,
+                                        event_handler=ServiceEventHandler))
     httpsite.sessionFactory = http_transport.HttpSession
 
     if settings.LISTEN_HTTP_TRANSPORT:    
@@ -76,7 +80,8 @@ def setup():
         ws = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WS_TRANSPORT,
                                                            debug=settings.DEBUG,
                                                            signing_key=signing_key,
-                                                           signing_id=settings.SIGNING_ID)
+                                                           signing_id=settings.SIGNING_ID,
+                                                           event_handler=ServiceEventHandler)
         listenWS(ws)
     
     if settings.LISTEN_WSS_TRANSPORT and sslContext:  
@@ -85,7 +90,8 @@ def setup():
         wss = websocket_transport.WebsocketTransportFactory(settings.LISTEN_WSS_TRANSPORT, is_secure=True,
                                                             debug=settings.DEBUG,
                                                             signing_key=signing_key,
-                                                            signing_id=settings.SIGNING_ID)
+                                                            signing_id=settings.SIGNING_ID,
+                                                            event_handler=ServiceEventHandler)
         listenWS(wss, contextFactory=sslContext)
     
     if settings.IRC_NICK:

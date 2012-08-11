@@ -4,10 +4,15 @@ import hashlib
 import weakref
 import re
 
+import event_handler
 import custom_exceptions
 
 VENDOR_RE = re.compile(r'\[(.*)\]')
 
+class ServiceEventHandler(event_handler.GenericEventHandler):
+    def handle_event(self, msg_method, msg_params, connection_ref):
+        return ServiceFactory.call(msg_method, msg_params, _connection_ref=connection_ref)
+        
 class ResultObject(object):
     def __init__(self, result=None, sign=False, sign_algo=None, sign_id=None):
         self.result = result

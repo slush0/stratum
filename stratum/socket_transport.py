@@ -66,13 +66,6 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
             raise Exception("Not connected")
         
         return self.client.rpc(*args, **kwargs)
-
-    def rpc_multi(self, *args, **kwargs):
-        if not self.client:
-            raise Exception("Not connected")
-        
-        return self.client.rpc_multi(*args, **kwargs)
-
     
     def buildProtocol(self, addr):
         self.resetDelay()

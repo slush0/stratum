@@ -1,5 +1,6 @@
 from autobahn.websocket import WebSocketServerProtocol, WebSocketServerFactory
 from protocol import Protocol
+from event_handler import GenericEventHandler
 
 class WebsocketServerProtocol(WebSocketServerProtocol, Protocol):
     def connectionMade(self):
@@ -17,11 +18,13 @@ class WebsocketServerProtocol(WebSocketServerProtocol, Protocol):
         self.sendMessage(data, False)
         
 class WebsocketTransportFactory(WebSocketServerFactory):
-    def __init__(self, port, is_secure=False, debug=False, signing_key=None, signing_id=None):
+    def __init__(self, port, is_secure=False, debug=False, signing_key=None, signing_id=None,
+                 event_handler=GenericEventHandler):
         self.debug = debug
         self.signing_key = signing_key
         self.signing_id = signing_id
         self.protocol = WebsocketServerProtocol
+        self.event_handler = event_handler
         
         if is_secure:
             uri = "wss://0.0.0.0:%d" % port

@@ -10,6 +10,7 @@ import helpers
 import semaphore
 #from storage import Storage
 from protocol import Protocol, RequestCounter
+from event_handler import GenericEventHandler
 import settings
 
 import logger
@@ -133,11 +134,13 @@ class HttpSession(Session):
 class Root(Resource):
     isLeaf = True
     
-    def __init__(self, debug=False, signing_key=None, signing_id=None):
+    def __init__(self, debug=False, signing_key=None, signing_id=None,
+                 event_handler=GenericEventHandler):
         Resource.__init__(self)
         self.signing_key = signing_key
         self.signing_id = signing_id
         self.debug = debug # This class acts as a 'factory', debug is used by Protocol
+        self.event_handler = event_handler
         
     def render_GET(self, request):
         if not settings.BROWSER_ENABLE:

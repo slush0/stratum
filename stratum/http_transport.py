@@ -149,6 +149,14 @@ class Root(Resource):
         # TODO: Web browser
         return "Web browser not implemented yet"
     
+    def render_OPTIONS(self, request):
+        session = request.getSession(cookie_prefix='STRATUM_SESSION')
+
+        request.setHeader('server', settings.USER_AGENT)
+        request.setHeader('x-session-timeout', session.sessionTimeout)
+        request.setHeader('access-control-allow-origin', '*') # Allow access from any other domain
+        return ''
+    
     def render_POST(self, request):
         session = request.getSession(cookie_prefix='STRATUM_SESSION')
         

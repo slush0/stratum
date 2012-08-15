@@ -25,10 +25,14 @@ class RequestCounter(object):
         
     def decrease(self):
         self.counter -= 1
-        if self.counter <= 0 and self.deferred:
+        if self.counter <= 0:
+            self.finish()
+
+    def finish(self):
+        if self.deferred:
             self.deferred.callback(True)
             self.deferred = None
-
+            
 class Protocol(LineOnlyReceiver):
     delimiter = '\n'
     
@@ -120,12 +124,15 @@ class Protocol(LineOnlyReceiver):
         
         for line in lines:
             if self.transport.disconnecting:
+                request_counter.finish()
                 return
             if len(line) > self.MAX_LENGTH:
+                request_counter.finish()
                 return self.lineLengthExceeded(line)
             else:
                 self.lineReceived(line, request_counter)
         if len(self._buffer) > self.MAX_LENGTH:
+            request_counter.finish()
             return self.lineLengthExceeded(self._buffer)        
         
     def lineReceived(self, line, request_counter):
@@ -133,6 +140,7 @@ class Protocol(LineOnlyReceiver):
             message = json.loads(line)
         except:
             #self.writeGeneralError("Cannot decode message '%s'" % line)
+            request_counter.finish()
             raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line)
         
         if self.factory.debug:

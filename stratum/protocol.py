@@ -218,7 +218,7 @@ class ClientProtocol(Protocol):
                 self.rpc(cmd[0], cmd[1])
             
         if self.factory.on_connect:
-            self.factory.on_connect.callback(True)
+            self.factory.on_connect.callback(self)
             self.factory.on_connect = None
             
         #d = self.rpc('node.get_peers', [])

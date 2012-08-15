@@ -156,6 +156,7 @@ class Root(Resource):
         request.setHeader('x-session-timeout', session.sessionTimeout)
         request.setHeader('access-control-allow-origin', '*') # Allow access from any other domain
         request.setHeader('access-control-allow-methods', 'POST, OPTIONS')
+        request.setHeader('access-control-allow-headers', 'Content-Type')
         return ''
     
     def render_POST(self, request):
@@ -176,7 +177,7 @@ class Root(Resource):
  
         # Although it isn't intuitive at all, request.getHeader reads request headers,
         # but request.setHeader (few lines above) writes response headers...
-        if request.getHeader('content-type') != 'application/stratum':
+        if 'application/stratum' not in request.getHeader('content-type'):
             session.transport.write("%s\n" % json.dumps({'id': None, 'result': None, 'error': (-1, "Content-type must be 'application/stratum'. See http://stratum.bitcoin.cz for more info.")}))
             self._finish(None, request, session.transport, session.lock)
             return
@@ -201,7 +202,6 @@ class Root(Resource):
                 session.transport.push_url = callback_url 
                   
         data = request.content.read()
-        
         if data:
             wait = defer.Deferred()
             wait.addCallback(self._finish, request, session.transport, session.lock)
@@ -214,7 +214,6 @@ class Root(Resource):
     @classmethod        
     def _finish(cls, _, request, transport, lock):
         # First parameter is callback result; not used here
-        
         data = transport.fetch_buffer()
         request.setHeader('content-length', len(data))
         request.setHeader('content-md5', hashlib.md5(data).hexdigest())

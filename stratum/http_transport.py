@@ -178,7 +178,7 @@ class Root(Resource):
         # Although it isn't intuitive at all, request.getHeader reads request headers,
         # but request.setHeader (few lines above) writes response headers...
         if 'application/stratum' not in request.getHeader('content-type'):
-            session.transport.write("%s\n" % json.dumps({'id': None, 'result': None, 'error': (-1, "Content-type must be 'application/stratum'. See http://stratum.bitcoin.cz for more info.")}))
+            session.transport.write("%s\n" % json.dumps({'id': None, 'result': None, 'error': (-1, "Content-type must be 'application/stratum'. See http://stratum.bitcoin.cz for more info.", "")}))
             self._finish(None, request, session.transport, session.lock)
             return
         

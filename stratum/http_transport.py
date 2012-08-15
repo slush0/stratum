@@ -155,6 +155,7 @@ class Root(Resource):
         request.setHeader('server', settings.USER_AGENT)
         request.setHeader('x-session-timeout', session.sessionTimeout)
         request.setHeader('access-control-allow-origin', '*') # Allow access from any other domain
+        request.setHeader('access-control-allow-methods', 'POST, OPTIONS')
         return ''
     
     def render_POST(self, request):

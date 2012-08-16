@@ -2,14 +2,17 @@
 from distribute_setup import use_setuptools
 use_setuptools()
 
+#python setup.py sdist upload
+
 from setuptools import setup
 
-setup(name='Stratum',
-      version='0.1',
+setup(name='stratum',
+      version='0.1.1',
       description='Stratum server implementation based on Twisted',
       author='slush',
       author_email='info@bitcion.cz',
       url='http://stratum.bitcoin.cz',
       packages=['stratum',],
+      py_modules=['distribute_setup',],
       install_requires=['twisted', 'ecdsa', 'pyopenssl', 'autobahn',]
      )

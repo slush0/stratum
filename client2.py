@@ -3,8 +3,8 @@ import urllib2
 import time
 
 n = 1
-#data = '{"id": 1, "method": "example.pubsub.subscribe", "params": [1]}'+"\n"
-data = '{"id": 2, "method": "example.ping", "params": ["cus"]}'+"\n"
+data = '{"id": 1, "method": "example.pubsub.subscribe", "params": [1]}'+"\n"
+data += '{"id": 2, "method": "example.ping", "params": ["cus"]}'+"\n"
 #data += '{"id": 3, "method": "example.synchronous", "params": [5]}'+"\n"
 #data += '{"id": 4, "method": "example.synchronous", "params": [5]}'+"\n"
 #data += '{"id": 5, "method": "example.synchronous", "params": [5]}'+"\n"

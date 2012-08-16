@@ -3,7 +3,7 @@ from twisted.internet import defer
 
 #import custom_exceptions
 from stratum.socket_transport import SocketTransportClientFactory
-from stratum.services import GenericService
+from stratum.services import GenericService, ServiceEventHandler
 
 import time
 
@@ -34,14 +34,15 @@ def main():
                 debug=debug,
                 signing_key=None,
                 signing_id=None,
-                on_connect=d)
+                on_connect=d,
+                event_handler=ServiceEventHandler)
     yield d # Wait to on_connect event
 
-    (event, subscription_key) = (yield f.rpc('example.pubsub.subscribe', [1,]))
+    (event, subscription_key) = (yield f.subscribe('example.pubsub.subscribe', [1,]))
     print "Subscribed:", event, subscription_key
-    #reactor.callLater(3, unsubscribe, f, event, subscription_key)
+    reactor.callLater(3, unsubscribe, f, event, subscription_key)
     
-    #print (yield f.rpc('discovery.list_services', []))
+    print (yield f.rpc('discovery.list_services', []))
     #print (yield f.rpc('discovery.list_methods', ['example']))
     #print (yield f.rpc('discovery.list_params', ['example.ping']))
 

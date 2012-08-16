@@ -11,5 +11,5 @@ setup(name='Stratum',
       author_email='info@bitcion.cz',
       url='http://stratum.bitcoin.cz',
       packages=['stratum',],
-      install_requires=['twisted', 'ecdsa', 'pyopenssl', 'autobahn',]# 'Twisted%20Words'],
+      install_requires=['twisted', 'ecdsa', 'pyopenssl', 'autobahn',]
      )

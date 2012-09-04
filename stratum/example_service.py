@@ -48,8 +48,15 @@ class ExampleService(GenericService):
     
 class TimeSubscription(pubsub.Subscription):
     event = 'example.pubsub.time_event'
+    
     def filter(self, t):
         return t % self.params.get('period', 1) == 0
+        
+    def after_subscribe(self, _):
+        # Some objects want to fire up notification or other
+        # action directly after client subscribes.
+        # after_subscribe is the right place for such logic
+        pass
         
 class PubsubExampleService(GenericService):
     service_type = 'example.pubsub'

@@ -203,9 +203,9 @@ class Root(Resource):
                   
         data = request.content.read()
         if data:
-            wait = defer.Deferred()
-            wait.addCallback(self._finish, request, session.transport, session.lock)
-            proto.dataReceived(data, request_counter=RequestCounter(wait))
+            counter = RequestCounter()
+            counter.on_finish.addCallback(self._finish, request, session.transport, session.lock)
+            proto.dataReceived(data, request_counter=counter)
         else:
             # Ping message (empty request) of HTTP Polling
             self._finish(None, request, session.transport, session.lock) 

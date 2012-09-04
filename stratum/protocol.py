@@ -16,8 +16,8 @@ import logger
 log = logger.get_logger('protocol')
 
 class RequestCounter(object):
-    def __init__(self, deferred=None):
-        self.deferred = deferred
+    def __init__(self):
+        self.on_finish = defer.Deferred()
         self.counter = 0
         
     def set_count(self, cnt):
@@ -29,16 +29,13 @@ class RequestCounter(object):
             self.finish()
 
     def finish(self):
-        if self.deferred:
-            self.deferred.callback(True)
-            self.deferred = None
+        if not self.on_finish.called:
+            self.on_finish.callback(True)
+            self.on_finish = None
             
 class Protocol(LineOnlyReceiver):
     delimiter = '\n'
     
-    def __init__(self, event_handler=event_handler.GenericEventHandler()):
-        self.event_handler = event_handler
-        
     def _get_id(self):
         self.request_id += 1
         return self.request_id
@@ -47,6 +44,8 @@ class Protocol(LineOnlyReceiver):
         self.request_id = 0    
         self.lookup_table = {}
         self.event_handler = self.factory.event_handler()
+        self.on_finish = None # Will point to defer which is called
+                              # once all client requests are processed
     
         log.debug("Connected %s" % self.transport.getPeer().host)
         connection_registry.ConnectionRegistry.add_connection(self)
@@ -97,6 +96,7 @@ class Protocol(LineOnlyReceiver):
     def process_response(self, data, message_id, sign_method, sign_params, request_counter):
         self.writeJsonResponse(data.result, message_id, data.sign, sign_method, sign_params)
         request_counter.decrease()
+        
             
     def process_failure(self, failure, message_id, sign_method, sign_params, request_counter):
         sign = False
@@ -121,6 +121,7 @@ class Protocol(LineOnlyReceiver):
         lines  = (self._buffer+data).split(self.delimiter)
         self._buffer = lines.pop(-1)
         request_counter.set_count(len(lines))
+        self.on_finish = request_counter.on_finish
         
         for line in lines:
             if self.transport.disconnecting:
@@ -169,10 +170,9 @@ class Protocol(LineOnlyReceiver):
                     result.addCallback(self.process_response, msg_id, msg_method, msg_params, request_counter)
                     result.addErrback(self.process_failure, msg_id, msg_method, msg_params, request_counter)
             
-        elif msg_id: #(msg_result != None or msg_error) and msg_id:
+        elif msg_id:
             # It's a RPC response
             # Perform lookup to the table of waiting requests.
-           
             request_counter.decrease()
            
             try:

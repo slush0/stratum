@@ -66,7 +66,15 @@ class Subscription(object):
             return
 
         conn.writeJsonRequest(self.event, self.process(*args, **kwargs), is_notification=True)
-            
+        self.after_emit(*args, **kwargs)
+
+    def after_emit(self, *args, **kwargs):
+        pass
+    
+    # Once function is defined, it will be called every time
+    #def after_subscribe(self, _):
+    #    pass
+    
     def __eq__(self, other):
         return (isinstance(other, Subscription) and other.get_key() == self.get_key())
     
@@ -89,9 +97,20 @@ class Pubsub(object):
         subscription.connection_ref = weakref.ref(connection)
         session.setdefault('subscriptions', {})
         session['subscriptions'][key] = subscription
-        
+                    
         cls.__subscriptions.setdefault(subscription.event, weakref.WeakKeyDictionary())
         cls.__subscriptions[subscription.event][subscription] = None
+        
+        if hasattr(subscription, 'on_finish'):
+            if connection.on_finish != None:
+                # If subscription is processed during the request, wait to
+                # finish and then process the callback
+                connection.on_finish.addCallback(subscription.after_subscribe)
+            else:
+                # If subscription is NOT processed during the request (any real use case?),
+                # process callback instantly (better now than never).
+                subscription.on_finish(True)
+        
         return (subscription.event, key)
     
     @classmethod

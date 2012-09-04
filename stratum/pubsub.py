@@ -101,7 +101,7 @@ class Pubsub(object):
         cls.__subscriptions.setdefault(subscription.event, weakref.WeakKeyDictionary())
         cls.__subscriptions[subscription.event][subscription] = None
         
-        if hasattr(subscription, 'on_finish'):
+       if hasattr(subscription, 'after_subscribe'):
             if connection.on_finish != None:
                 # If subscription is processed during the request, wait to
                 # finish and then process the callback

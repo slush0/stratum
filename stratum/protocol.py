@@ -31,7 +31,6 @@ class RequestCounter(object):
     def finish(self):
         if not self.on_finish.called:
             self.on_finish.callback(True)
-            self.on_finish = None
             
 class Protocol(LineOnlyReceiver):
     delimiter = '\n'

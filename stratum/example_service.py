@@ -49,8 +49,11 @@ class ExampleService(GenericService):
 class TimeSubscription(pubsub.Subscription):
     event = 'example.pubsub.time_event'
     
-    def filter(self, t):
-        return t % self.params.get('period', 1) == 0
+    def process(self, t):
+        # Process must return list of parameters for notification
+        # or None if notification should not be send 
+        if t % self.params.get('period', 1) == 0:
+            return (t,)
         
     def after_subscribe(self, _):
         # Some objects want to fire up notification or other

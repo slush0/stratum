@@ -1,6 +1,4 @@
 import time
-import resource
-
 import logger
 log = logger.get_logger('stats')
 

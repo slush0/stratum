@@ -10,13 +10,21 @@ def setup():
     from twisted.web.server import Site
     from twisted.python import log
     #from twisted.enterprise import adbapi
-    #from twisted.web.wsgi import WSGIResource
     import OpenSSL.SSL
     
     try:
         import settings
     except ImportError:
         print "***** Is configs.py missing? Maybe you want to copy and customize config_default.py?"
+
+    application = service.Application("stratum-server")
+    
+    # Setting up logging
+    from twisted.python.log import ILogObserver, FileLogObserver
+    from twisted.python.logfile import DailyLogFile
+
+    #logfile = DailyLogFile(settings.LOGFILE, settings.LOGDIR)
+    #application.setComponent(ILogObserver, FileLogObserver(logfile).emit)
 
     if settings.ENABLE_EXAMPLE_SERVICE:
         import stratum.example_service
@@ -48,8 +56,6 @@ def setup():
         
     # Set up thread pool size for service threads
     reactor.suggestThreadPoolSize(settings.THREAD_POOL_SIZE) 
-    
-    application = service.Application("stratum-server")
     
     if settings.LISTEN_SOCKET_TRANSPORT:
         # Attach Socket Transport service to application
@@ -96,18 +102,7 @@ def setup():
     
     if settings.IRC_NICK:
         reactor.connectTCP(settings.IRC_SERVER, settings.IRC_PORT, irc.IrcLurkerFactory(settings.IRC_ROOM, settings.IRC_NICK, settings.IRC_HOSTNAME))
-    
-    '''
-    wsgiThreadPool = ThreadPool()
-    wsgiThreadPool.start()
-    reactor.addSystemEventTrigger('after', 'shutdown', wsgiThreadPool.stop)
-        
-
-    wsgi = WSGIResource(reactor, wsgiThreadPool, application)
-    wsgipoll = internet.TCPServer(settings.LISTEN_WSGIPOLL_TRANSPORT, Site(wsgi))
-    wsgipoll.setServiceParent(application)
-    '''
-        
+            
     return application
 
 if __name__ == '__main__':

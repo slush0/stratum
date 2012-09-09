@@ -2,27 +2,46 @@
 
 import os
 import logging
+from twisted.python import log as twisted_log
 
-try:
-    import settings
-except ImportError:
-    # This is shared module, but settings are necessary only for server side
-    settings = None
-    
-def get_logger(name):
+import settings
+
+'''
+class Logger(object):
+    def debug(self, msg):
+        twisted_log.msg(msg)
+
+    def info(self, msg):
+        twisted_log.msg(msg)
+
+    def warning(self, msg):
+        twisted_log.msg(msg)
+        
+    def error(self, msg):
+        twisted_log.msg(msg)
+        
+    def critical(self, msg):
+        twisted_log.msg(msg)
+'''
+
+def get_logger(name):    
     logger = logging.getLogger(name)
     logger.addHandler(stream_handler)
-
-    if settings:
-        logger.setLevel(getattr(logging, settings.LOGLEVEL))
+    logger.setLevel(getattr(logging, settings.LOGLEVEL))
+    
+    if settings.LOGFILE != None:
         logger.addHandler(file_handler)
     
-    logger.info("Logging initialized")
+    logger.debug("Logging initialized")
     return logger
+    #return Logger()
 
-fmt = logging.Formatter("%(asctime)s %(name)s %(module)s.%(funcName)s # %(message)s")
-
-if settings:
+if settings.DEBUG:
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(module)s.%(funcName)s # %(message)s")
+else:
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s # %(message)s")
+    
+if settings.LOGFILE != None:
     file_handler = logging.FileHandler(os.path.join(settings.LOGDIR, settings.LOGFILE))
     file_handler.setFormatter(fmt)
 

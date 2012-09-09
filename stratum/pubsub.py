@@ -115,7 +115,8 @@ class Pubsub(object):
                 # process callback instantly (better now than never).
                 subscription.on_finish(True)
         
-        return (subscription.event, key)
+        # List of 2-tuples is prepared for future multi-subscriptions
+        return ((subscription.event, key),)
     
     @classmethod
     def unsubscribe(cls, connection, subscription=None, key=None):

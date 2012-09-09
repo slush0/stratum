@@ -181,7 +181,7 @@ class Protocol(LineOnlyReceiver):
         if msg_method:
             # It's a RPC call or notification
             try:
-                result = self.event_handler.handle_event(msg_method, msg_params, connection_ref=self)
+                result = self.event_handler._handle_event(msg_method, msg_params, connection_ref=self)
                 if result == None and msg_id != None:
                     # event handler must return Deferred object or raise an exception for RPC request
                     raise custom_exceptions.MethodNotFoundException("Event handler cannot process method '%s'" % msg_method)

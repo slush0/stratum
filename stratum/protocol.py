@@ -3,16 +3,17 @@ import json
 import time
 
 from twisted.protocols.basic import LineOnlyReceiver
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 from twisted.python.failure import Failure
 
 #import services
-import event_handler
+import stats
 import signature
 import custom_exceptions
 import connection_registry
-import logger
+import settings
 
+import logger
 log = logger.get_logger('protocol')
 
 class RequestCounter(object):
@@ -31,7 +32,7 @@ class RequestCounter(object):
     def finish(self):
         if not self.on_finish.called:
             self.on_finish.callback(True)
-            
+                
 class Protocol(LineOnlyReceiver):
     delimiter = '\n'
     
@@ -39,22 +40,31 @@ class Protocol(LineOnlyReceiver):
         self.request_id += 1
         return self.request_id
 
+    def _get_ip(self):
+        return self.transport.getPeer().host
+
+    def get_session(self):
+        return connection_registry.ConnectionRegistry.get_session(self)
+        
     def connectionMade(self):
         self.request_id = 0    
         self.lookup_table = {}
         self.event_handler = self.factory.event_handler()
         self.on_finish = None # Will point to defer which is called
-                              # once all client requests are processed
+                        # once all client requests are processed
     
+        stats.PeerStats.client_connected(self._get_ip())
         log.debug("Connected %s" % self.transport.getPeer().host)
         connection_registry.ConnectionRegistry.add_connection(self)
     
     def transport_write(self, data):
         '''Overwrite this if transport needs some extra care about data written
-        to the socket, like adding message format in websocket''' 
+        to the socket, like adding message format in websocket.''' 
         self.transport.write(data)
         
+        
     def connectionLost(self, reason):
+        stats.PeerStats.client_disconnected(self._get_ip())
         connection_registry.ConnectionRegistry.remove_connection(self)
        
     def writeJsonRequest(self, method, params, is_notification=False):
@@ -85,7 +95,7 @@ class Protocol(LineOnlyReceiver):
                 message_id, sign_method, sign_params, None, (code, message, traceback))
         else:
             serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message, traceback)})
-            
+        
         self.transport_write("%s\n" % serialized)
 
     def writeGeneralError(self, message, code=-1):
@@ -98,18 +108,31 @@ class Protocol(LineOnlyReceiver):
         
             
     def process_failure(self, failure, message_id, sign_method, sign_params, request_counter):
+        if not isinstance(failure.value, custom_exceptions.ServiceException):
+            # All handled exceptions should inherit from ServiceException class.
+            # Throwing other exception class means that it is unhandled error
+            # and we should log it.
+            log.exception(failure)
+            
         sign = False
-        code = -1
+        code = getattr(failure.value, 'code', -1)
+        
         #if isinstance(failure.value, services.ResultObject):
         #    # Strip ResultObject
         #    sign = failure.value.sign
         #    failure.value = failure.value.result
         
-        traceback = failure.getBriefTraceback()
-        self.writeJsonError(code, str(failure.value), str(traceback), message_id, sign, sign_method, sign_params)    
+        if message_id != None:
+            # Other party doesn't care of error state for notifications
+            if settings.DEBUG:
+                tb = failure.getBriefTraceback()
+            else:
+                tb = None
+            self.writeJsonError(code, failure.getErrorMessage(), tb, message_id, sign, sign_method, sign_params)
+                
         request_counter.decrease()
         
-    def dataReceived(self, data, request_counter=RequestCounter()):
+    def dataReceived(self, data, request_counter=None):
         '''Original code from Twisted, hacked for request_counter proxying.
         request_counter is hack for HTTP transport, didn't found cleaner solution how
         to indicate end of request processing in asynchronous manner.
@@ -117,6 +140,9 @@ class Protocol(LineOnlyReceiver):
         TODO: This would deserve some unit test to be sure that future twisted versions
         will work nicely with this.'''
         
+        if request_counter == None:
+            request_counter = RequestCounter()
+            
         lines  = (self._buffer+data).split(self.delimiter)
         self._buffer = lines.pop(-1)
         request_counter.set_count(len(lines))
@@ -156,7 +182,10 @@ class Protocol(LineOnlyReceiver):
             # It's a RPC call or notification
             try:
                 result = self.event_handler.handle_event(msg_method, msg_params, connection_ref=self)
-            except Exception as exc:
+                if result == None and msg_id != None:
+                    # event handler must return Deferred object or raise an exception for RPC request
+                    raise custom_exceptions.MethodNotFoundException("Event handler cannot process method '%s'" % msg_method)
+            except:
                 failure = Failure()
                 self.process_failure(failure, msg_id, msg_method, msg_params, request_counter)
 
@@ -224,9 +253,11 @@ class ClientProtocol(Protocol):
             for cmd in self.factory.after_connect:
                 self.rpc(cmd[0], cmd[1])
             
-        if self.factory.on_connect:
-            self.factory.on_connect.callback(self)
-            self.factory.on_connect = None
+        if not self.factory.on_connect.called:
+            d = self.factory.on_connect 
+            self.factory.on_connect = defer.Deferred()
+            d.callback(self.factory)
+            
             
         #d = self.rpc('node.get_peers', [])
         #d.addCallback(self.factory.add_peers)
@@ -238,8 +269,9 @@ class ClientProtocol(Protocol):
             self.factory.timeout_handler.cancel()
             self.factory.timeout_handler = None
         
-        if self.factory.on_disconnect:
-            self.factory.on_disconnect.callback(True)
-            self.factory.on_disconnect = None
+        if not self.factory.on_disconnect.called:
+            d = self.factory.on_disconnect
+            self.factory.on_disconnect = defer.Deferred()
+            d.callback(self.factory)
             
         Protocol.connectionLost(self, reason)

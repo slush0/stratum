@@ -36,7 +36,7 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.event_handler = event_handler
         self.protocol = ClientProtocol
         self.after_connect = []
-                    
+        
         self.timeout_handler = reactor.callLater(30, self.connection_timeout)
         reactor.connectTCP(host, port, self)
 
@@ -87,6 +87,19 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.after_connect.append((method, params))
         return self.client.rpc(method, params, *args, **kwargs)
     
+    def reconnect(self, host=None, port=None):
+        '''Close current connection and start new one.
+        If host or port specified, it will be used for new connection.'''
+
+        new = list(self.main_host)
+        if host:
+            new[0] = host
+        if port:
+            new[1] = port
+        self.main_host = tuple(new)
+        
+        self.client.transport.loseConnection()
+        
     def buildProtocol(self, addr):
         self.resetDelay()
         return ReconnectingClientFactory.buildProtocol(self, addr)

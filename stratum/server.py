@@ -3,7 +3,7 @@ def setup():
         from twisted.internet import epollreactor
         epollreactor.install()
     except ImportError:
-        print "Failed to install epoll reactor!"
+        print "Failed to install epoll reactor, default reactor will be used instead."
     
     from twisted.application import service, internet
     from twisted.internet import reactor, ssl

@@ -22,7 +22,7 @@ class ConnectionRegistry(object):
             conn = conn()
             
         if isinstance(conn, GenericService):
-            conn = conn._connection_ref()
+            conn = conn.connection_ref()
             
         if conn == None:
             return None

@@ -12,7 +12,7 @@ DEBUG = True
 LOGDIR = 'log/'
 
 # Main application log file.
-LOGFILE = 'stratum.log'
+LOGFILE = None #'stratum.log'
 
 # Possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
 LOGLEVEL = 'DEBUG'
@@ -21,6 +21,19 @@ LOGLEVEL = 'DEBUG'
 # 30 is enough for small installation, for real usage
 # it should be slightly more, say 100-300.
 THREAD_POOL_SIZE = 30
+
+# RPC call throws TimeoutServiceException once total time since request has been
+# placed (time to delivery to client + time for processing on the client)
+# crosses _TOTAL (in second).
+# _TOTAL reflects the fact that not all transports deliver RPC requests to the clients
+# instantly, so request can wait some time in the buffer on server side.
+# NOT IMPLEMENTED YET
+#RPC_TIMEOUT_TOTAL = 600
+
+# RPC call throws TimeoutServiceException once client is processing request longer
+# than _PROCESS (in second)
+# NOT IMPLEMENTED YET
+#RPC_TIMEOUT_PROCESS = 30
 
 # Do you want to expose "example" service in server?
 # Useful for learning the server,you probably want to disable
@@ -82,7 +95,7 @@ BITCOIN_TRUSTED_USER = 'stratum'
 BITCOIN_TRUSTED_PASSWORD = '***somepassword***'
 
 # ******************** OTHER CORE SETTINGS *********************
-# Use "echo '<yourpassword>' | sha256sum | cut -f1 -d' ' "
+# Use "echo -n '<yourpassword>' | sha256sum | cut -f1 -d' ' "
 # for calculating SHA256 of your preferred password
 ADMIN_PASSWORD_SHA256 = None # Admin functionality is disabled
 #ADMIN_PASSWORD_SHA256 = '9e6c0c1db1e0dfb3fa5159deb4ecd9715b3c8cd6b06bd4a3ad77e9a8c5694219' # SHA256 of the password

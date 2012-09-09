@@ -7,7 +7,7 @@ def subscribe(func):
     '''Decorator detect Subscription object in result and subscribe connection'''
     def inner(self, *args, **kwargs):
         subs = func(self, *args, **kwargs)
-        return Pubsub.subscribe(self._connection_ref(), subs)
+        return Pubsub.subscribe(self.connection_ref(), subs)
     return inner
 
 def unsubscribe(func):
@@ -15,9 +15,9 @@ def unsubscribe(func):
     def inner(self, *args, **kwargs):
         subs = func(self, *args, **kwargs)
         if isinstance(subs, Subscription):
-            return Pubsub.unsubscribe(self._connection_ref(), subscription=subs)
+            return Pubsub.unsubscribe(self.connection_ref(), subscription=subs)
         else:
-            return Pubsub.unsubscribe(self._connection_ref(), key=subs)
+            return Pubsub.unsubscribe(self.connection_ref(), key=subs)
     return inner
 
 class Subscription(object):
@@ -30,13 +30,10 @@ class Subscription(object):
                 raise Exception("Please define event name in constructor")
             else:
                 self.event = event
-            
-        self.params = params
+        
+        self.params = params # Internal parameters for subscription object
         self.connection_ref = None
             
-    def filter(self, *args, **kwargs):
-        return True
-
     def process(self, *args, **kwargs):
         return args
             
@@ -51,22 +48,25 @@ class Subscription(object):
         
     @classmethod
     def emit(cls, *args, **kwargs):
+        '''Shortcut for emiting this event to all subscribers.'''
         if not hasattr(cls, 'event'):
             raise Exception("Subscription.emit() can be used only for subclasses with filled 'event' class variable.")
         return Pubsub.emit(cls.event, *args, **kwargs)
         
-    def _emit(self, *args, **kwargs):
-        if not self.filter(*args, **kwargs):
-            # Subscription don't pass this args
-            return
-            
+    def emit_single(self, *args, **kwargs):
+        '''Perform emit of this event just for current subscription.'''
         conn = self.connection_ref()
         if conn == None:
             # Connection is closed
             return
 
-        conn.writeJsonRequest(self.event, self.process(*args, **kwargs), is_notification=True)
-        self.after_emit(*args, **kwargs)
+        payload = self.process(*args, **kwargs)
+        if payload != None:
+            if isinstance(payload, (tuple, list)):
+                conn.writeJsonRequest(self.event, payload, is_notification=True)
+                self.after_emit(*args, **kwargs)
+            else:
+                raise Exception("Return object from process() method must be list or None")
 
     def after_emit(self, *args, **kwargs):
         pass
@@ -96,6 +96,10 @@ class Pubsub(object):
         
         subscription.connection_ref = weakref.ref(connection)
         session.setdefault('subscriptions', {})
+        
+        if key in session['subscriptions']:
+            raise custom_exceptions.AlreadySubscribedException("This connection is already subscribed for such event.")
+        
         session['subscriptions'][key] = subscription
                     
         cls.__subscriptions.setdefault(subscription.event, weakref.WeakKeyDictionary())
@@ -147,4 +151,4 @@ class Pubsub(object):
                 # Subscriber is no more connected
                 continue
                         
-            subscription._emit(*args, **kwargs)
+            subscription.emit_single(*args, **kwargs)

@@ -18,7 +18,12 @@ def setup():
             yield (varname, value)
 
     import config_default
-    import config
+    
+    try:
+        import config
+    except ImportError:
+        # Custom config not presented, but we can still use defaults
+        config = None
             
     import sys
     module = sys.modules[__name__]
@@ -27,10 +32,11 @@ def setup():
         module.__dict__[name] = value
 
     changes = {}
-    for name,value in read_values(config):
-        if value != module.__dict__[name]:
-            changes[name] = value
-        module.__dict__[name] = value
+    if config:
+        for name,value in read_values(config):
+            if value != module.__dict__.get(name, None):
+                changes[name] = value
+            module.__dict__[name] = value
 
     if module.__dict__['DEBUG'] and changes:
         print "----------------"

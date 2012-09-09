@@ -11,7 +11,7 @@ VENDOR_RE = re.compile(r'\[(.*)\]')
 
 class ServiceEventHandler(event_handler.GenericEventHandler):
     def handle_event(self, msg_method, msg_params, connection_ref):
-        return ServiceFactory.call(msg_method, msg_params, _connection_ref=connection_ref)
+        return ServiceFactory.call(msg_method, msg_params, connection_ref=connection_ref)
         
 class ResultObject(object):
     def __init__(self, result=None, sign=False, sign_algo=None, sign_id=None):
@@ -57,7 +57,7 @@ class ServiceFactory(object):
         return (service_type, vendor, method_name)
     
     @classmethod
-    def call(cls, method, params, _connection_ref=None):
+    def call(cls, method, params, connection_ref=None):
         try:
             (service_type, vendor, func_name) = cls._split_method(method)
         except ValueError:
@@ -68,7 +68,7 @@ class ServiceFactory(object):
                 raise        
         
             _inst = cls.lookup(service_type, vendor=vendor)()
-            _inst._connection_ref = weakref.ref(_connection_ref)
+            _inst.connection_ref = weakref.ref(connection_ref)
             func = _inst.__getattribute__(func_name)
             if not callable(func):
                 raise
@@ -229,7 +229,7 @@ class GenericService(object):
     # RPC call. Useful for pubsub mechanism, but use it with care.
     # It does not need to point to actual and valid data, so
     # you have to check if connection still exists every time.  
-    _connection_ref = None
+    connection_ref = None
     
 class ServiceDiscovery(GenericService):
     service_type = 'discovery'

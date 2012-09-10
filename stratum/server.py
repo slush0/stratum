@@ -1,24 +1,18 @@
-def setup():
+def setup(setup_event=None):
     try:
         from twisted.internet import epollreactor
         epollreactor.install()
     except ImportError:
         print "Failed to install epoll reactor, default reactor will be used instead."
     
-    from twisted.application import service, internet
-    from twisted.internet import reactor, ssl
-    from twisted.web.server import Site
-    from twisted.python import log
-    #from twisted.enterprise import adbapi
-    import OpenSSL.SSL
-    
     try:
         import settings
     except ImportError:
         print "***** Is configs.py missing? Maybe you want to copy and customize config_default.py?"
 
+    from twisted.application import service
     application = service.Application("stratum-server")
-    
+
     # Setting up logging
     from twisted.python.log import ILogObserver, FileLogObserver
     from twisted.python.logfile import DailyLogFile
@@ -28,7 +22,23 @@ def setup():
 
     if settings.ENABLE_EXAMPLE_SERVICE:
         import stratum.example_service
-
+    
+    if setup_event == None:
+        setup_finalize(None, application)
+    else:
+        setup_event.addCallback(setup_finalize, application)
+        
+    return application
+    
+def setup_finalize(event, application):
+       
+    from twisted.application import service, internet
+    from twisted.internet import reactor, ssl
+    from twisted.web.server import Site
+    from twisted.python import log
+    #from twisted.enterprise import adbapi
+    import OpenSSL.SSL
+    
     from services import ServiceEventHandler
     
     import socket_transport
@@ -36,9 +46,8 @@ def setup():
     import websocket_transport
     import irc
     
-    #dbpool = adbapi.ConnectionPool(settings.DATABASE_DRIVER, host=settings.DATABASE_HOST, user=settings.DATABASE_USER,
-    #                               passwd=settings.DATABASE_PASSWORD, db=settings.DATABASE_DBNAME, cp_reconnect=True)
-        
+    from stratum import settings
+    
     try:
         import signature
         signing_key = signature.load_privkey_pem(settings.SIGNING_KEY)
@@ -102,8 +111,8 @@ def setup():
     
     if settings.IRC_NICK:
         reactor.connectTCP(settings.IRC_SERVER, settings.IRC_PORT, irc.IrcLurkerFactory(settings.IRC_ROOM, settings.IRC_NICK, settings.IRC_HOSTNAME))
-            
-    return application
+
+    return event
 
 if __name__ == '__main__':
     print "This is not executable script. Try 'twistd -ny launcher.tac instead!"

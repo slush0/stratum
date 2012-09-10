@@ -7,7 +7,7 @@ use_setuptools()
 from setuptools import setup
 
 setup(name='stratum',
-      version='0.2.4',
+      version='0.2.5',
       description='Stratum server implementation based on Twisted',
       author='slush',
       author_email='info@bitcion.cz',

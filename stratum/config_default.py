@@ -100,6 +100,10 @@ BITCOIN_TRUSTED_PASSWORD = '***somepassword***'
 ADMIN_PASSWORD_SHA256 = None # Admin functionality is disabled
 #ADMIN_PASSWORD_SHA256 = '9e6c0c1db1e0dfb3fa5159deb4ecd9715b3c8cd6b06bd4a3ad77e9a8c5694219' # SHA256 of the password
 
+# IP from which admin calls are allowed.
+# Set None to allow admin calls from all IPs
+ADMIN_RESTRICT_INTERFACE = '127.0.0.1'
+
 # Use "./signature.py > signing_key.pem" to generate unique signing key for your server
 SIGNING_KEY = None # Message signing is disabled
 #SIGNING_KEY = 'signing_key.pem'

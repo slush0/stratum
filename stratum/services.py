@@ -202,6 +202,11 @@ def admin(func):
         if not len(args):
             raise custom_exceptions.UnauthorizedException("Missing password")
 
+        if settings.ADMIN_RESTRICT_INTERFACE != None:
+            ip = args[0].connection_ref()._get_ip()
+            if settings.ADMIN_RESTRICT_INTERFACE != ip:
+                raise custom_exceptions.UnauthorizedException("RPC call not allowed from your IP")
+            
         if not settings.ADMIN_PASSWORD_SHA256:
             raise custom_exceptions.UnauthorizedException("Admin password not set, RPC call disabled")
 

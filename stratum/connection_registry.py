@@ -7,7 +7,7 @@ class ConnectionRegistry(object):
     
     @classmethod
     def add_connection(cls, conn):
-        cls.__connections[conn] = {} # Session data like subscriptions
+        cls.__connections[conn] = True
 
     @classmethod
     def remove_connection(cls, conn):
@@ -15,7 +15,7 @@ class ConnectionRegistry(object):
             del cls.__connections[conn]
         except:
             print "Warning: Cannot remove connection from ConnectionRegistry"  
-    
+        
     @classmethod
     def get_session(cls, conn):
         if isinstance(conn, weakref.ref):
@@ -27,7 +27,7 @@ class ConnectionRegistry(object):
         if conn == None:
             return None
         
-        return cls.__connections.get(conn, None)
+        return conn.get_session()
     
     @classmethod
     def iterate(cls):

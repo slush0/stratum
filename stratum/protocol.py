@@ -44,7 +44,7 @@ class Protocol(LineOnlyReceiver):
         return self.transport.getPeer().host
 
     def get_session(self):
-        return connection_registry.ConnectionRegistry.get_session(self)
+        return self.session
         
     def connectionMade(self):
         self.request_id = 0    
@@ -52,7 +52,10 @@ class Protocol(LineOnlyReceiver):
         self.event_handler = self.factory.event_handler()
         self.on_finish = None # Will point to defer which is called
                         # once all client requests are processed
-    
+        
+        # Initiate connection session
+        self.session = {}
+        
         stats.PeerStats.client_connected(self._get_ip())
         log.debug("Connected %s" % self.transport.getPeer().host)
         connection_registry.ConnectionRegistry.add_connection(self)

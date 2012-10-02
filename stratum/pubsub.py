@@ -44,7 +44,7 @@ class Subscription(object):
     
     def get_session(self):
         '''Connection session may be useful in filter or process functions'''
-        return ConnectionRegistry.get_session(self.connection_ref())
+        return self.connection_ref().get_session()
         
     @classmethod
     def emit(cls, *args, **kwargs):

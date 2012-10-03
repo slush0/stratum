@@ -1,7 +1,8 @@
 from twisted.internet.protocol import ServerFactory
 from twisted.internet.protocol import ReconnectingClientFactory
-from twisted.internet import reactor, defer
+from twisted.internet import reactor, defer, endpoints
 
+import socksclient
 import custom_exceptions
 from protocol import Protocol, ClientProtocol
 from event_handler import GenericEventHandler
@@ -9,6 +10,10 @@ from event_handler import GenericEventHandler
 import logger
 log = logger.get_logger('socket_transport')
 
+def sockswrapper(proxy, dest):
+    endpoint = endpoints.TCP4ClientEndpoint(reactor, dest[0], dest[1])
+    return socksclient.SOCKSWrapper(reactor, proxy[0], proxy[1], endpoint)
+  
 class SocketTransportFactory(ServerFactory):
     def __init__(self, debug=False, signing_key=None, signing_id=None, event_handler=GenericEventHandler):
         self.debug = debug
@@ -20,7 +25,7 @@ class SocketTransportFactory(ServerFactory):
 class SocketTransportClientFactory(ReconnectingClientFactory):
     def __init__(self, host, port, allow_trusted=True, allow_untrusted=False,
                  debug=False, signing_key=None, signing_id=None,
-                 is_reconnecting=True,
+                 is_reconnecting=True, proxy=None,
                  event_handler=GenericEventHandler):
         self.debug = debug
         self.is_reconnecting = is_reconnecting
@@ -37,9 +42,14 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.protocol = ClientProtocol
         self.after_connect = []
         
-        self.timeout_handler = reactor.callLater(30, self.connection_timeout)
-        reactor.connectTCP(host, port, self)
-
+        if proxy:
+            self.timeout_handler = reactor.callLater(60, self.connection_timeout)
+            sw = sockswrapper(proxy, (host, port))
+            sw.connect(self)
+        else:
+            self.timeout_handler = reactor.callLater(30, self.connection_timeout)
+            reactor.connectTCP(host, port, self)
+            
     '''
     This shouldn't be a part of transport layer
     def add_peers(self, peers):

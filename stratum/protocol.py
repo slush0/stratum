@@ -50,6 +50,7 @@ class Protocol(LineOnlyReceiver):
         self.request_id = 0    
         self.lookup_table = {}
         self.event_handler = self.factory.event_handler()
+        self.on_disconnect = defer.Deferred()
         self.on_finish = None # Will point to defer which is called
                         # once all client requests are processed
         
@@ -67,6 +68,9 @@ class Protocol(LineOnlyReceiver):
         
         
     def connectionLost(self, reason):
+        if not self.on_disconnect.called:
+            self.on_disconnect.callback(self)
+        
         stats.PeerStats.client_disconnected(self._get_ip())
         connection_registry.ConnectionRegistry.remove_connection(self)
        

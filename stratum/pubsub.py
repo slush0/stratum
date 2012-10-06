@@ -143,13 +143,18 @@ class Pubsub(object):
     @classmethod
     def get_subscription_count(cls, event):
         return len(cls.__subscriptions.get(event, {}))
-    
+
     @classmethod
-    def emit(cls, event, *args, **kwargs):
+    def iterate_subscribers(cls, event):
         for subscription in cls.__subscriptions.get(event, weakref.WeakKeyDictionary()).iterkeyrefs():
             subscription = subscription()
             if subscription == None:
                 # Subscriber is no more connected
                 continue
-                        
+            
+            yield subscription
+            
+    @classmethod
+    def emit(cls, event, *args, **kwargs):
+        for subscription in cls.iterate_subscribers(event):                        
             subscription.emit_single(*args, **kwargs)

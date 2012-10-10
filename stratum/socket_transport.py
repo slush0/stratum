@@ -37,18 +37,23 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.peers_trusted = {}
         self.peers_untrusted = {}
         self.main_host = (host, port)
+        self.new_host = None
+        self.proxy = proxy
         
         self.event_handler = event_handler
         self.protocol = ClientProtocol
         self.after_connect = []
         
-        if proxy:
+        self.connect()
+        
+    def connect(self):
+        if self.proxy:
             self.timeout_handler = reactor.callLater(60, self.connection_timeout)
-            sw = sockswrapper(proxy, (host, port))
+            sw = sockswrapper(self.proxy, self.main_host)
             sw.connect(self)
         else:
             self.timeout_handler = reactor.callLater(30, self.connection_timeout)
-            reactor.connectTCP(host, port, self)
+            reactor.connectTCP(self.main_host[0], self.main_host[1], self)
             
     '''
     This shouldn't be a part of transport layer
@@ -97,7 +102,7 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.after_connect.append((method, params))
         return self.client.rpc(method, params, *args, **kwargs)
     
-    def reconnect(self, host=None, port=None):
+    def reconnect(self, host=None, port=None, wait=None):
         '''Close current connection and start new one.
         If host or port specified, it will be used for new connection.'''
 
@@ -106,12 +111,35 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
             new[0] = host
         if port:
             new[1] = port
-        self.main_host = tuple(new)
+        self.new_host = tuple(new)
+
+        if self.client and self.client.connected:    
+            if wait != None:
+                self.delay = wait
+            self.client.transport.connector.disconnect() 
         
-        self.client.transport.loseConnection()
+    def retry(self, connector=None):       
+        if not self.is_reconnecting:
+            return
+
+        if connector is None:
+            if self.connector is None:
+                raise ValueError("no connector to retry")
+            else:
+                connector = self.connector
         
+        if self.new_host:
+            # Switch to new host if any
+            connector.host = self.new_host[0]
+            connector.port = self.new_host[1]
+            self.main_host = self.new_host
+            self.new_host = None
+    
+        return ReconnectingClientFactory.retry(self, connector)
+            
     def buildProtocol(self, addr):
         self.resetDelay()
+        #if not self.is_reconnecting: raise
         return ReconnectingClientFactory.buildProtocol(self, addr)
                 
     def clientConnectionLost(self, connector, reason):

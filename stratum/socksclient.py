@@ -62,6 +62,7 @@ class SOCKSv4ClientProtocol(Protocol):
             self.transport.protocol = self.postHandshakeFactory.buildProtocol(
                 self.transport.getHost())
             self.transport.protocol.transport = self.transport
+            self.transport.protocol.connected = 1
             self.transport.protocol.connectionMade()
             self.handshakeDone.callback(self.transport.getPeer())
 

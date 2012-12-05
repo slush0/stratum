@@ -47,6 +47,14 @@ class Protocol(LineOnlyReceiver):
         return self.session
         
     def connectionMade(self):
+        try:
+            self.transport.setTcpNoDelay(True)
+            self.transport.setTcpKeepAlive(True)
+        except:
+            # Supported only by the socket transport,
+            # but there's really no better place in code to trigger this.
+            pass
+
         self.request_id = 0    
         self.lookup_table = {}
         self.event_handler = self.factory.event_handler()

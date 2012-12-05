@@ -113,7 +113,7 @@ class Pubsub(object):
             else:
                 # If subscription is NOT processed during the request (any real use case?),
                 # process callback instantly (better now than never).
-                subscription.on_finish(True)
+                subscription.after_subscribe(True)
         
         # List of 2-tuples is prepared for future multi-subscriptions
         return ((subscription.event, key),)

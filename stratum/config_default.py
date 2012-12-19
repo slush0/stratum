@@ -67,6 +67,16 @@ LISTEN_WSS_TRANSPORT = 8003
 SSL_PRIVKEY = 'server.key'
 SSL_CACERT = 'server.crt'
 
+# ******************** TCP SETTINGS ******************
+
+# Enables support for socket encapsulation, which is compatible
+# with haproxy 1.5+. By enabling this, first line of received
+# data will represent some metadata about proxied stream:
+# PROXY <TCP4 or TCP6> <source IP> <dest IP> <source port> </dest port>\n
+#
+# Full specification: http://haproxy.1wt.eu/download/1.5/doc/proxy-protocol.txt
+TCP_PROXY_PROTOCOL = False
+
 # ******************** HTTP SETTINGS *****************
 
 # Keepalive for HTTP transport sessions (at this time for both poll and push)

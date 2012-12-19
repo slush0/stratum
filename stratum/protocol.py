@@ -41,7 +41,7 @@ class Protocol(LineOnlyReceiver):
         return self.request_id
 
     def _get_ip(self):
-        return self.transport.getPeer().host
+        return self.proxied_ip or self.transport.getPeer().host
 
     def get_session(self):
         return self.session
@@ -55,6 +55,10 @@ class Protocol(LineOnlyReceiver):
             # but there's really no better place in code to trigger this.
             pass
 
+        # Read settings.TCP_PROXY_PROTOCOL documentation
+        self.expect_tcp_proxy_protocol_header = self.factory.__dict__.get('tcp_proxy_protocol_enable', False)
+        self.proxied_ip = None # IP obtained from TCP proxy protocol
+        
         self.request_id = 0    
         self.lookup_table = {}
         self.event_handler = self.factory.event_handler()
@@ -183,6 +187,21 @@ class Protocol(LineOnlyReceiver):
             return self.lineLengthExceeded(self._buffer)        
         
     def lineReceived(self, line, request_counter):
+        if self.expect_tcp_proxy_protocol_header:
+            # This flag may be set only for TCP transport AND when TCP_PROXY_PROTOCOL
+            # is enabled in server config. Then we expect the first line of the stream
+            # may contain proxy metadata.
+
+            # We don't expect this header during this session anymore
+            self.expect_tcp_proxy_protocol_header = False
+            
+            if line.startswith('PROXY'):
+                self.proxied_ip = line.split()[2]
+
+                # Let's process next line
+                request_counter.decrease()
+                return
+            
         try:
             message = json.loads(line)
         except:

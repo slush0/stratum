@@ -15,12 +15,16 @@ def sockswrapper(proxy, dest):
     return socksclient.SOCKSWrapper(reactor, proxy[0], proxy[1], endpoint)
   
 class SocketTransportFactory(ServerFactory):
-    def __init__(self, debug=False, signing_key=None, signing_id=None, event_handler=GenericEventHandler):
+    def __init__(self, debug=False, signing_key=None, signing_id=None, event_handler=GenericEventHandler,
+                 tcp_proxy_protocol_enable=False):
         self.debug = debug
         self.signing_key = signing_key
         self.signing_id = signing_id
         self.event_handler = event_handler
         self.protocol = Protocol
+        
+        # Read settings.TCP_PROXY_PROTOCOL documentation
+        self.tcp_proxy_protocol_enable = tcp_proxy_protocol_enable
         
 class SocketTransportClientFactory(ReconnectingClientFactory):
     def __init__(self, host, port, allow_trusted=True, allow_untrusted=False,

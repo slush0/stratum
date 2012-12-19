@@ -72,7 +72,8 @@ def setup_finalize(event, application):
                                 socket_transport.SocketTransportFactory(debug=settings.DEBUG,
                                                                         signing_key=signing_key,
                                                                         signing_id=settings.SIGNING_ID,
-                                                                        event_handler=ServiceEventHandler))
+                                                                        event_handler=ServiceEventHandler,
+                                                                        tcp_proxy_protocol_enable=settings.TCP_PROXY_PROTOCOL))
         socket.setServiceParent(application)
 
     # Build the HTTP interface
@@ -96,7 +97,8 @@ def setup_finalize(event, application):
                                                            debug=settings.DEBUG,
                                                            signing_key=signing_key,
                                                            signing_id=settings.SIGNING_ID,
-                                                           event_handler=ServiceEventHandler)
+                                                           event_handler=ServiceEventHandler,
+                                                           tcp_proxy_protocol_enable=settings.TCP_PROXY_PROTOCOL)
         listenWS(ws)
     
     if settings.LISTEN_WSS_TRANSPORT and sslContext:  

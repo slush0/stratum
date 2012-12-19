@@ -3,7 +3,7 @@ import json
 import time
 
 from twisted.protocols.basic import LineOnlyReceiver
-from twisted.internet import defer, reactor
+from twisted.internet import defer, reactor, error
 from twisted.python.failure import Failure
 
 #import services
@@ -171,7 +171,13 @@ class Protocol(LineOnlyReceiver):
                 request_counter.finish()
                 return self.lineLengthExceeded(line)
             else:
-                self.lineReceived(line, request_counter)
+                try:
+                    self.lineReceived(line, request_counter)
+                except:
+                    request_counter.finish()
+                    log.exception("Processing of message failed")
+                    return error.ConnectionLost('Processing of message failed')
+                    
         if len(self._buffer) > self.MAX_LENGTH:
             request_counter.finish()
             return self.lineLengthExceeded(self._buffer)        

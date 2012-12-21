@@ -80,12 +80,14 @@ class Protocol(LineOnlyReceiver):
         
         
     def connectionLost(self, reason):
-        if not self.on_disconnect.called:
+        if self.on_disconnect != None and not self.on_disconnect.called:
             self.on_disconnect.callback(self)
-        
+            self.on_disconnect = None
+ 
         stats.PeerStats.client_disconnected(self._get_ip())
         connection_registry.ConnectionRegistry.remove_connection(self)
-       
+        self.transport = None # Fixes memory leak (cyclic reference)
+ 
     def writeJsonRequest(self, method, params, is_notification=False):
         request_id = None if is_notification else self._get_id() 
         serialized = json.dumps({'id': request_id, 'method': method, 'params': params})

@@ -1,6 +1,6 @@
 Description:
 ============
-This is server implementation of Stratum protocol
+This is implementation of Stratum protocol for server and client side
 using asynchronous networking written in Python Twisted.
 
 Homepage: http://stratum.bitcoin.cz

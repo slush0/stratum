@@ -1,6 +1,7 @@
 import json
 #import jsonical
 import time
+import socket
 
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import defer, reactor, error
@@ -50,6 +51,9 @@ class Protocol(LineOnlyReceiver):
         try:
             self.transport.setTcpNoDelay(True)
             self.transport.setTcpKeepAlive(True)
+            self.transport.socket.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 120) # Seconds before sending keepalive probes
+            self.transport.socket.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1) # Interval in seconds between keepalive probes
+            self.transport.socket.setsockopt(socket.SOL_TCP, socket.TCP_KEEPCNT, 5) # Failed keepalive probles before declaring other end dead
         except:
             # Supported only by the socket transport,
             # but there's really no better place in code to trigger this.

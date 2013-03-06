@@ -145,6 +145,23 @@ class Pubsub(object):
         return len(cls.__subscriptions.get(event, {}))
 
     @classmethod
+    def get_subscription(self, connection, event, key=None):
+        '''Return subscription object for given connection and event'''
+        session = ConnectionRegistry.get_session(connection)
+        if session == None:
+            raise custom_exceptions.PubsubException("No session found")
+
+        if key == None:
+            sub = [ sub for sub in session['subscriptions'].values() if sub.event == event ]
+            try:
+                return sub[0]
+            except IndexError:
+                raise custom_exceptions.PubsubException("Not subscribed for event %s" % event)
+
+        else:
+            raise Exception("Searching subscriptions by key is not implemented yet")
+              
+    @classmethod
     def iterate_subscribers(cls, event):
         for subscription in cls.__subscriptions.get(event, weakref.WeakKeyDictionary()).iterkeyrefs():
             subscription = subscription()

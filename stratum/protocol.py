@@ -44,6 +44,10 @@ class Protocol(LineOnlyReceiver):
     def _get_ip(self):
         return self.proxied_ip or self.transport.getPeer().host
 
+    def get_ident(self):
+        # Get global unique ID of connection
+        return "%s:%s" % (self.proxied_ip or self.transport.getPeer().host, "%x" % id(self))
+    
     def get_session(self):
         return self.session
         

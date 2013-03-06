@@ -145,7 +145,7 @@ class Pubsub(object):
         return len(cls.__subscriptions.get(event, {}))
 
     @classmethod
-    def get_subscription(self, connection, event, key=None):
+    def get_subscription(cls, connection, event, key=None):
         '''Return subscription object for given connection and event'''
         session = ConnectionRegistry.get_session(connection)
         if session == None:

@@ -151,8 +151,8 @@ class Pubsub(object):
         if session == None:
             raise custom_exceptions.PubsubException("No session found")
 
-        if key == None:
-            sub = [ sub for sub in session['subscriptions'].values() if sub.event == event ]
+        if key == None:    
+            sub = [ sub for sub in session.get('subscriptions', {}).values() if sub.event == event ]
             try:
                 return sub[0]
             except IndexError:

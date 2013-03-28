@@ -20,7 +20,7 @@ linux-based system (should work on Mac OS too, not tested)
 Following instructions will work on Ubuntu & Debian*:
 
 a) From GIT, for developers
-git clone git://gitorious.org/stratum/server.git
+git clone git://github.com/slush0/stratum.git 
 sudo apt-get install python-dev
 sudo python setup.py develop
 

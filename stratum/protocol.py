@@ -187,9 +187,10 @@ class Protocol(LineOnlyReceiver):
             else:
                 try:
                     self.lineReceived(line, request_counter)
-                except:
+                except Exception as exc:
                     request_counter.finish()
-                    log.exception("Processing of message failed")
+                    #log.exception("Processing of message failed")
+                    log.warning("Failed message: %s from %s" % (str(exc), self._get_ip()))
                     return error.ConnectionLost('Processing of message failed')
                     
         if len(self._buffer) > self.MAX_LENGTH:
@@ -217,7 +218,7 @@ class Protocol(LineOnlyReceiver):
         except:
             #self.writeGeneralError("Cannot decode message '%s'" % line)
             request_counter.finish()
-            raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line)
+            raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line.strip())
         
         if self.factory.debug:
             log.debug("> %s" % message)

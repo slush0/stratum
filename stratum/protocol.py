@@ -84,8 +84,11 @@ class Protocol(LineOnlyReceiver):
     def transport_write(self, data):
         '''Overwrite this if transport needs some extra care about data written
         to the socket, like adding message format in websocket.''' 
-        self.transport.write(data)
-        
+        try:
+            self.transport.write(data)
+        except AttributeError:
+            # Transport is disconnected
+            pass
         
     def connectionLost(self, reason):
         if self.on_disconnect != None and not self.on_disconnect.called:

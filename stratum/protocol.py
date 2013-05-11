@@ -85,7 +85,10 @@ class Protocol(LineOnlyReceiver):
         '''Overwrite this if transport needs some extra care about data written
         to the socket, like adding message format in websocket.''' 
         try:
-            self.transport.write(data)
+            if self.transport != None:
+                self.transport.write(data)
+            else:
+                log.info ("Client disconnected")
         except AttributeError:
             # Transport is disconnected
             pass

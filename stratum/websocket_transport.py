@@ -1,4 +1,4 @@
-from autobahn.websocket import WebSocketServerProtocol, WebSocketServerFactory
+from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
 from protocol import Protocol
 from event_handler import GenericEventHandler
 

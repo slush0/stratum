@@ -16,5 +16,5 @@ setup(name='stratum',
       packages=['stratum',],
       py_modules=['distribute_setup',],
       zip_safe=False,
-      install_requires=['twisted', 'ecdsa', 'pyopenssl', 'autobahn',]
+      install_requires=['twisted', 'ecdsa', 'autobahn',]
      )

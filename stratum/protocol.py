@@ -36,6 +36,7 @@ class RequestCounter(object):
                 
 class Protocol(LineOnlyReceiver):
     delimiter = '\n'
+    MAX_LENGTH = 1638400
     
     def _get_id(self):
         self.request_id += 1

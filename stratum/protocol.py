@@ -221,7 +221,11 @@ class Protocol(LineOnlyReceiver):
         except:
             #self.writeGeneralError("Cannot decode message '%s'" % line)
             request_counter.finish()
-            raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line.strip())
+            try:
+                l = line.decode('ascii')
+                raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % l.strip())
+            except UnicodeDecodeError:
+                raise custom_exceptions.ProtocolException("Received garbage message, ignoring")
         
         if self.factory.debug:
             log.debug("> %s" % message)

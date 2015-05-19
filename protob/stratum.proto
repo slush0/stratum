@@ -1,0 +1,71 @@
+// Sugar for easier handling in Java
+option java_package = "com.satoshilabs.stratum.protobuf";
+option java_outer_classname = "StratumProtobuf";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.EnumValueOptions {
+    optional string json = 50002;
+}
+
+/**
+ * Mapping between Stratum wire identifier (uint) and a protobuf message
+ */
+enum MessageType {
+        MessageType_Subscribe = 10 [(json)='mining.subscribe'];
+        MessageType_Authorize = 11 [(json)='mining.authorize'];
+        MessageType_Notify = 12 [(json)='mining.notify'];
+        MessageType_Submit = 13 [(json)='mining.submit'];
+        MessageType_SetDifficulty = 20 [(json)='mining.set_difficulty'];
+        MessageType_Reconnect = 21 [(json)='client.reconnect'];
+        MessageType_GetVersion = 22 [(json)='client.get_version'];
+        MessageType_Version = 23;
+}
+
+message Subscribe {
+    required uint32 id = 1;
+}
+
+message Authorize {
+    required uint32 id = 1;
+    required bytes worker_name = 2;
+    optional bytes password = 3;     
+}
+
+message Notify {
+    optional bytes job_id = 1;
+    required bytes prevhash = 2;
+    required bytes coinbase1 = 3;
+    optional bytes coinbase2 = 4;
+    repeated bytes merkle_branch = 5;
+    required bytes version = 6;
+    required bytes nbits = 7;
+    required bytes ntime = 8;
+    optional bool clean_jobs = 9;
+}
+
+message Submit {
+    required uint32 id = 1;
+    optional bytes worker_name = 2;
+    optional bytes job_id = 3;
+    required bytes extranonce2 = 4;
+    required bytes ntime = 5;
+    required bytes nonce = 6;
+}
+
+message SetDifficulty {
+    required uint64 difficulty = 1;
+}
+
+message Reconnect {
+    optional bytes hostname = 1;
+    optional int32 port = 2;
+    optional int32 wait = 3;
+}
+
+message GetVersion {
+    required uint32 id = 1;
+}
+
+message Version {}
+

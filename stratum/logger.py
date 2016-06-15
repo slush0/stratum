@@ -2,6 +2,7 @@
 
 import os
 import logging
+from logging import handlers
 from twisted.python import log as twisted_log
 
 import settings
@@ -30,7 +31,8 @@ def get_logger(name):
     logger.setLevel(getattr(logging, settings.LOGLEVEL))
     
     if settings.LOGFILE != None:
-        logger.addHandler(file_handler)
+        handler = handlers.MemoryHandler(capacity=8000, target=file_handler)
+        logger.addHandler(handler)    
     
     logger.debug("Logging initialized")
     return logger

@@ -31,8 +31,7 @@ def get_logger(name):
     logger.setLevel(getattr(logging, settings.LOGLEVEL))
     
     if settings.LOGFILE != None:
-        handler = handlers.MemoryHandler(capacity=8000, target=file_handler)
-        logger.addHandler(handler)    
+        logger.addHandler(file_handler)
     
     logger.debug("Logging initialized")
     return logger

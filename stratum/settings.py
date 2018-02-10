@@ -1,3 +1,4 @@
+import re
 def setup():
     '''
         This will import modules config_default and config and move their variables

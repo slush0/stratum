@@ -127,6 +127,9 @@ class Protocol(LineOnlyReceiver):
                 message_id, sign_method, sign_params, None, (code, message, traceback))
         else:
             serialized = json.dumps({'id': message_id, 'result': None, 'error': (code, message, traceback)})
+
+        if self.factory.debug:
+            log.debug("< %s" % serialized)
         
         self.transport_write("%s\n" % serialized)
 
@@ -193,7 +196,7 @@ class Protocol(LineOnlyReceiver):
                 except Exception as exc:
                     request_counter.finish()
                     #log.exception("Processing of message failed")
-                    log.warning("Failed message: %s from %s" % (str(exc), self._get_ip()))
+                    log.debug("Failed message: %s from %s" % (str(exc), self._get_ip()))
                     return error.ConnectionLost('Processing of message failed')
                     
         if len(self._buffer) > self.MAX_LENGTH:
@@ -221,7 +224,11 @@ class Protocol(LineOnlyReceiver):
         except:
             #self.writeGeneralError("Cannot decode message '%s'" % line)
             request_counter.finish()
-            raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % line.strip())
+            try:
+                l = line.decode('ascii')
+                raise custom_exceptions.ProtocolException("Cannot decode message '%s'" % l.strip())
+            except UnicodeDecodeError:
+                raise custom_exceptions.ProtocolException("Received garbage message, ignoring")
         
         if self.factory.debug:
             log.debug("> %s" % message)

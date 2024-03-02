@@ -27,7 +27,7 @@ headers['content-type'] = 'application/stratum'
 s = time.time()
 
 for x in range(n):
-    r = urllib2.Request('http://california.stratum.bitcoin.cz:8000', data, headers)
+    r = urllib2.Request('http://stratum.bitcoin.cz:3333', data, headers)
 #    r = urllib2.Request('http://localhost:8000', data, headers)
     resp = urllib2.urlopen(r)
 

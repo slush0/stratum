@@ -5,6 +5,7 @@ from twisted.internet import reactor, defer, endpoints
 import socksclient
 import custom_exceptions
 from protocol import Protocol, ClientProtocol
+from protocol_binary import ProtocolBinary
 from event_handler import GenericEventHandler
 
 import logger
@@ -21,7 +22,7 @@ class SocketTransportFactory(ServerFactory):
         self.signing_key = signing_key
         self.signing_id = signing_id
         self.event_handler = event_handler
-        self.protocol = Protocol
+        self.protocol = ProtocolBinary
         
         # Read settings.TCP_PROXY_PROTOCOL documentation
         self.tcp_proxy_protocol_enable = tcp_proxy_protocol_enable
